@@ -43,6 +43,7 @@ int main (int argc, char *argv[]) {
     /**
      * SOCK_STREAM : type provides sequenced, reliable, two-way connection based on byte streams
      * protocol (0) : specifies a particular protocol to be used with the socket.
+     * @return : "(int) descriptor referencing the socket, -1 on error"
      */
     server_fd = socket(AF_INET, SOCK_STREAM, 0); //create an endpoint for communication
 
@@ -52,11 +53,24 @@ int main (int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    //sockaddr_in server
+    /**
+     * sa_family_t     sin_family   AF_INET. 
+     * in_port_t       sin_port     Port number. 
+     * struct in_addr  sin_addr     IP address. 
+     * note: The sin_port and sin_addr members shall be in network byte order.
+     */
     server.sin_family = AF_INET;
-    server.sin_port = htons(port);
-    server.sin_addr.s_addr = htonl(INADDR_ANY);
+    server.sin_port = htons(port); //converts the unsigned short integer hostshort from host byte order to network byte order.
+    server.sin_addr.s_addr = htonl(INADDR_ANY); //converts the unsigned integer hostlong from host byte order to network byte order.
 
     opt_val = 1;
+
+    /**
+     * setsockopt(int socket, int level, int option_name, const void *option_value, socklen_t option_len);
+     * Level : manipulate options at thee socket level SOL_SOCKET
+     *
+     */
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof opt_val);
 
     err = bind(server_fd, (struct sockaddr *) &server, sizeof(server));
