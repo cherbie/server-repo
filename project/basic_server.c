@@ -53,8 +53,8 @@ int main (int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    //sockaddr_in server
     /**
+     * sockaddr_in server
      * sa_family_t     sin_family   AF_INET. 
      * in_port_t       sin_port     Port number. 
      * struct in_addr  sin_addr     IP address. 
@@ -73,12 +73,21 @@ int main (int argc, char *argv[]) {
      */
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof opt_val);
 
-    err = bind(server_fd, (struct sockaddr *) &server, sizeof(server));
+    /**
+     * Server is made the point of reference when an event occurs at the socket address.
+     * sockaddr_in needs to be type casted into sockaddr
+     * sizeof() gives the byte size of the server structure;
+     */
+    err = bind(server_fd, (struct sockaddr *) &server, sizeof(server)); 
     if (err < 0){
         fprintf(stderr,"Could not bind socket\n");
         exit(EXIT_FAILURE);
     } 
 
+    /**
+     *
+     *
+     */
     err = listen(server_fd, 128);
     if (err < 0){
         fprintf(stderr,"Could not listen on socket\n");
