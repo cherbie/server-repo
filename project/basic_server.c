@@ -12,6 +12,15 @@
  *   - Can we wrap the action of sending ALL of out data and receiving ALL of the data?
  */
 
+/** SERVER
+ * socket() : create a socket
+ * bind() : bind server to a specific port
+ * listen() : start to listen for client connections
+ * accept() : blocks until a connection is accepted
+ * read()
+ * write()
+ * close()
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,7 +50,8 @@ int main (int argc, char *argv[]) {
     char *buf;
 
     /**
-     * SOCK_STREAM : type provides sequenced, reliable, two-way connection based on byte streams
+     * Creates a socket:
+     * SOCK_STREAM : type provides sequenced, reliable, two-way connection based on byte streams (CONNECTION BASED)
      * protocol (0) : specifies a particular protocol to be used with the socket.
      * @return : "(int) descriptor referencing the socket, -1 on error"
      */
@@ -67,13 +77,18 @@ int main (int argc, char *argv[]) {
     opt_val = 1;
 
     /**
+     * manipulate options for the socket referred to by the file descriptor server_fd.
      * setsockopt(int socket, int level, int option_name, const void *option_value, socklen_t option_len);
-     * Level : manipulate options at thee socket level SOL_SOCKET
-     *
+     * SOL_SOCKET : constant
+     * Level : manipulate options at the socket level SOL_SOCKET
+     * SO_REUSEADDR : Indicates that the rules used in validating addresses supplied in a bind(2) call should allow reuse of local addresses
+     * opt_val : 
+     * @return : 0 = success & -1 on error and errno set appropriately
      */
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof opt_val);
 
     /**
+     * Bind a name to a socket.
      * Server is made the point of reference when an event occurs at the socket address.
      * sockaddr_in needs to be type casted into sockaddr
      * sizeof() gives the byte size of the server structure;
@@ -85,8 +100,10 @@ int main (int argc, char *argv[]) {
     } 
 
     /**
-     *
-     *
+     * listen for connections on a socket.
+     * server_fd : file descriptor.
+     * 128 : "backlog" -- defines the maximum length to which the queue of
+     * pending connections for sockfd may grow.
      */
     err = listen(server_fd, 128);
     if (err < 0){
@@ -98,6 +115,13 @@ int main (int argc, char *argv[]) {
 
     while (true) {
         socklen_t client_len = sizeof(client);
+
+        /**
+         * accept a connection on a socket.
+         * server_fd : listening socket
+         * &client : creates new connected socket
+         * @return : returns a new file descriptor referring to that socket
+         */
         // Will block until a connection is made
         client_fd = accept(server_fd, (struct sockaddr *) &client, &client_len);
 
@@ -145,6 +169,14 @@ int main (int argc, char *argv[]) {
         
         while (true) {  
             buf = calloc(BUFFER_SIZE, sizeof(char)); // Clear our buffer so we don't accidentally send/print garbage
+
+            /**
+             * calls are used to receive messages from a socket.
+             * They may be used to receive data on both connectionless and connection-oriented sockets.
+             * recv --> normally only used on a connected socket.
+             * sock_fd : 
+             * @return : number of bytes received or -1 on error.
+             */
             int read = recv(client_fd, buf, BUFFER_SIZE, 0);    // Try to read from the incoming client
 
             if (read < 0){
@@ -152,14 +184,14 @@ int main (int argc, char *argv[]) {
                 exit(EXIT_FAILURE);
             }
 
-            printf("%s\n", buf);
+            printf("[+]CLIENT -> SERVER: %s\n", buf);
 
             buf[0] = '\0';
-            sprintf(buf, "My politely respondance");
+            sprintf(buf, "My polite respondance");
 
             err = send(client_fd, buf, strlen(buf), 0); // Try to send something back
             // printf("Client's message is: %s",buf);
-             sleep(5); //Wait 5 seconds
+            sleep(5); //Wait 5 seconds
 
             buf[0] = '\0';
             sprintf(buf, "Let the games begin\n");
@@ -176,7 +208,13 @@ int main (int argc, char *argv[]) {
                 fprintf(stderr,"Client read failed\n");
                 exit(EXIT_FAILURE);
             }
-
+            
+            /** strstr(buf, "move");
+             * finds the first occurrence of the substring.
+             * @return : returns a pointer to the first occurrence in haystack of any of the 
+             * entire sequence of characters specified in needle, 
+             * or a null pointer if the sequence is not present in haystack.
+             */
             if (strstr(buf, "move") == NULL) {  // Check if the message contained 'move'
                 fprintf(stderr, "Unexpected message, terminating\n");
                 exit(EXIT_FAILURE);
