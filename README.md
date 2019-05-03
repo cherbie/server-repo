@@ -1,3 +1,3 @@
 # server-repo
 
-Contributors are Clayton and Frazer.
+Contributors are Clayton and Fraser.
