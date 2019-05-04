@@ -40,13 +40,13 @@ int main (int argc, char *argv[]) {
 
     int port = atoi(argv[1]);
 
-    int server_fd, client_fd, err, opt_val;
+    int server_fd, client_fd_1, client_fd_2, err, opt_val;
     /**
      * The sockaddr_in structure is used to store addresses for the Internet address family. 
      * Values of this type shall be cast by applications to struct sockaddr for use with socket 
      * functions.
      */
-    struct sockaddr_in server, client; 
+    struct sockaddr_in server, client, client2; 
     char *buf;
 
     /**
@@ -102,7 +102,7 @@ int main (int argc, char *argv[]) {
     /**
      * listen for connections on a socket.
      * server_fd : file descriptor.
-     * 128 : "backlog" -- defines the maximum length to which the queue of
+     * 4 : "backlog" -- defines the maximum length to which the queue of
      * pending connections for sockfd may grow.
      */
     err = listen(server_fd, 128);
@@ -123,14 +123,14 @@ int main (int argc, char *argv[]) {
          * @return : returns a new file descriptor referring to that socket
          */
         // Will block until a connection is made
-        client_fd = accept(server_fd, (struct sockaddr *) &client, &client_len);
+        client_fd_1 = accept(server_fd, (struct sockaddr *) &client, &client_len);
+        client_fd_2 = accept(server_fd, (struct sockaddr *) &client2, &client_len);
 
-        if (client_fd < 0) {
-            fprintf(stderr,"Could not establish new connection\n");
+        if (client_fd_1 < 0 || client_fd_2 < 0) {
+            fprintf(stderr,"Could not establish new connection with %d\n", client_fd_1);
             exit(EXIT_FAILURE);
+        }
 
-        } 
-        
         /**
         The following while loop contains some basic code that sends messages back and forth
         between a client (e.g. the socket_client.py client). 
@@ -166,7 +166,6 @@ int main (int argc, char *argv[]) {
                 - In the child process (which is associated with client), perform game_playing functionality
                 (or read the messages) 
         **/
-        
         while (true) {  
             buf = calloc(BUFFER_SIZE, sizeof(char)); // Clear our buffer so we don't accidentally send/print garbage
 
@@ -177,7 +176,7 @@ int main (int argc, char *argv[]) {
              * sock_fd : 
              * @return : number of bytes received or -1 on error.
              */
-            int read = recv(client_fd, buf, BUFFER_SIZE, 0);    // Try to read from the incoming client
+            int read = recv(client_fd_1, buf, BUFFER_SIZE, 0);    // Try to read from the incoming client
 
             if (read < 0){
                 fprintf(stderr,"Client read failed\n");
@@ -189,20 +188,20 @@ int main (int argc, char *argv[]) {
             buf[0] = '\0';
             sprintf(buf, "My polite respondance");
 
-            err = send(client_fd, buf, strlen(buf), 0); // Try to send something back
+            err = send(client_fd_1, buf, strlen(buf), 0); // Try to send something back
             // printf("Client's message is: %s",buf);
             sleep(5); //Wait 5 seconds
 
             buf[0] = '\0';
             sprintf(buf, "Let the games begin\n");
 
-            err = send(client_fd, buf, strlen(buf), 0); // Send another thing
+            err = send(client_fd_1, buf, strlen(buf), 0); // Send another thing
             if (err < 0){
                 fprintf(stderr,"Client write failed\n");
                 exit(EXIT_FAILURE);
             }
 
-            read = recv(client_fd, buf, BUFFER_SIZE, 0); // See if we have a response
+            read = recv(client_fd_2, buf, BUFFER_SIZE, 0); // See if we have a response
 
             if (read < 0){
                 fprintf(stderr,"Client read failed\n");
@@ -215,7 +214,7 @@ int main (int argc, char *argv[]) {
              * entire sequence of characters specified in needle, 
              * or a null pointer if the sequence is not present in haystack.
              */
-            if (strstr(buf, "move") == NULL) {  // Check if the message contained 'move'
+            if (strstr(buf, "m") == NULL) {  // Check if the message contained 'move'
                 fprintf(stderr, "Unexpected message, terminating\n");
                 exit(EXIT_FAILURE);
             }
@@ -223,7 +222,7 @@ int main (int argc, char *argv[]) {
             buf[0] = '\0';
             sprintf(buf, "You lose\n");
 
-            err = send(client_fd, buf, strlen(buf), 0); // Send our final response
+            err = send(client_fd_2, buf, strlen(buf), 0); // Send our final response
 
             if (err < 0){
                     fprintf(stderr,"Client write failed\n");
