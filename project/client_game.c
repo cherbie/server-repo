@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
     //send message
     buf = calloc(BUFFER_SIZE, sizeof(char));
     
-    err = sprintf(buf,"Message from Client");
+    err = sprintf(buf,"INIT");
     if( err < 0) {
         fprintf(stderr, "Error setting chars in buffer.");
         exit(EXIT_FAILURE);

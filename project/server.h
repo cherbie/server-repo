@@ -8,6 +8,8 @@
 #include <unistd.h>
 
 #define BUFFER_SIZE 1024
+#define MSG_SIZE 14
+#define NUM_LIVES 3
 
 //TYPES
 typedef struct {
@@ -31,9 +33,11 @@ char *buf; //socket input and output stream buffer
 
 //FUNCTION DECLARATIONS
 void conn_players(PLAYER *, int);
-int init_players(void);
-void enter_game(void);
+void start_game(void);
 void set_server_socket(void);
-
+int listenForInit(int *);
+int send_msg(PLAYER *, const char *);
+void reject_connections(void);
+void set_player_lives(void);
 
 
