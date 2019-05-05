@@ -9,15 +9,28 @@
 
 #define BUFFER_SIZE 1024
 
+//TYPES
+typedef struct {
+    int fd;
+    struct sockaddr_in addr; //The sockaddr_in structure is used to store addresses for the internet address family.
+    int id;
+    int lives;
+} PLAYER;
+
+typedef struct {
+    int fd;
+    struct sockaddr_in addr; //The sockaddr_in structure is used to store addresses for the internet address family.
+} SERVER;
+
 //GLOBAL VARIABLES
 int port;
-int server_fd, player1_fd, player2_fd, player3_fd, player4_fd; //socket integer descriptors
+SERVER server; //socket integer descriptors
+PLAYER player1, player2, player3, player4; //define players
 int err, opt_val; //temporary variables
-struct sockaddr_in server, client1, client2, client3, client4; //The sockaddr_in structure is used to store addresses for the internet address family. 
 char *buf; //socket input and output stream buffer
 
 //FUNCTION DECLARATIONS
-void conn_players(int *, struct sockaddr_in *);
+void conn_players(PLAYER *, int);
 int init_players(void);
 void enter_game(void);
 void set_server_socket(void);

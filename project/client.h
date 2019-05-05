@@ -8,3 +8,9 @@
 #include <unistd.h>
 
 #define BUFFER_SIZE 1024
+
+typedef struct {
+    int fd;
+    struct sockaddr_in addr; //The sockaddr_in structure is used to store addresses for the internet address family.
+    int lives;
+} CLIENT;
