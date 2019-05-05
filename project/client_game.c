@@ -7,32 +7,7 @@
  * select() : ... when is it possible to send more data
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-
-#define BUFFER_SIZE 1024
-
-
-/**
-PREDOMINANTLY SERVER LOGIC
- 1. INITIALISE MATCH
- 2. PLAYERS LIVES > 0
-    a. NO:
-        - NOTIFY ALL PLAYERS OF THE CURRENT STANDING
-        - EXIT GAME
-    b. YES:
-        - WAIT FOR PLAYERS MOVE
-        - ROLL DICE
-        - CALCULATE SCORES
-        - NOTIFY ALL PLAYERS
-        - REPEAT
-**/
+#include "client.h"
 
 int main(int argc, char* argv[])
 {
@@ -67,7 +42,7 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    printf("Connected to server on port: %d\n", port);
+    printf("Connected to server on port: %d\n\tclient:\t%d\n", port, client_fd);
 
 
     //send message
