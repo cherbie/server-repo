@@ -23,12 +23,11 @@ int main(int argc, char * argv[]) {
     }
 
     port = atoi(argv[1]);
-
     set_server_socket(); //EXIT_FAILURE UPON ERROR
-
     printf("Server is listening on %d\n", port);
 
-    err = init_players(); //manages the introduction of players to the game
+    int n;
+    err = init_players(&n); //manages the introduction of players to the game
     if(err == -2) { //timeout for players joining the game
         fprintf(stderr, "Game timeout due to lack of players joining.\n");
         exit(EXIT_FAILURE);
@@ -37,8 +36,21 @@ int main(int argc, char * argv[]) {
         fprintf(stderr, "Failed to establish connection with requesting player.\n");
         exit(EXIT_FAILURE);
     }
-
-    enter_game();
+    
+    switch(fork()) {
+        case 0 : { //child parent
+            printf("child\n");
+            start_game();
+        }
+        case -1 : { //error forking
+            perror("UNEXPECTED APPLICATION ERROR: ");
+        }
+        default : { //parent
+        printf("parent.\n");
+            while(true)
+                reject_connections();
+        }
+    }
 }
 
 /**
@@ -48,52 +60,102 @@ int main(int argc, char * argv[]) {
  * game_initialisation_timeout = -2;
  * failed_connection_establishment = -1;
  */
-int init_players(void)
+int init_players(int * n)
 {
-    int n = 0;
-    switch (n) {
-        case 0 : {
-            conn_players(&player1, ++n);
-            if (player1.fd < 0) {
-                fprintf(stderr,"Could not establish new connection with %d\n", player1.fd);
-                return -1;
+    *n = 1; //ensure starts at 1
+    printf("%d", *n);
+    while( *n < 5 ) {
+        switch (*n) {
+            case 1 : {
+                conn_players(&player1, *n); //connect client socket
+                listenForInit(n); //try to initiaise game entry for player #n
+                break;
             }
-        }
-        case 1 : {
-            conn_players(&player2, ++n);
-            if (player2.fd < 0) {
-                fprintf(stderr,"Could not establish new connection with %d\n", player2.fd);
-                return -1;
+            case 2 : {
+                conn_players(&player2, *n); //connect client socket
+                listenForInit(n); //try to initiaise game entry for player #n
+                break;
             }
-        }
-        case 2 : {
-            conn_players(&player3, ++n);
-            if (player3.fd < 0) {
-                fprintf(stderr,"Could not establish new connection with %d\n", player3.fd);
-                return -1;
+            case 3 : {
+                conn_players(&player3, *n); //connect client socket
+                listenForInit(n); //try to initiaise game entry for player #n
+                break;
             }
-        }
-        case 3 : {
-            conn_players(&player4, ++n);
-            if ( player4.fd < 0 ) {
-                fprintf(stderr,"Could not establish new connection with %d\n", player4.fd);
-                return -1;
+            case 4 : {
+                conn_players(&player4, *n); //connect client socket
+                listenForInit(n); //try to initiaise game entry for player #n
+                break;
             }
+            default : break;
         }
-        default : break;
+        if( *n < 0) *n = 0;
+        n++;
     }
     return 0;
+}
+
+/**
+ * WAIT for client "INIT" message from 4 players
+ * confirm game entry will "WELCOME".
+ * Deny game entry with "REJECT".
+ */
+void listenForInit(int *n) {
+    buf = calloc(MSG_SIZE, sizeof(char));
+    switch(*n) {
+        case 1 : {
+            err = recv(player1.fd, buf, sizeof(buf), 0);
+            if(err < 0) {
+                fprintf(stderr, "Error reading buffer message");
+                if(send_msg(&player1, "REJECT") < 0) {
+                    fprintf(stderr, "Error sending message %s to %d\n", "REJECT", player1.fd);
+                }
+                //destroy connection
+                n--; //reduce number of players connected
+                return;
+            }
+            else if( strcmp(buf, "INIT") != 0) {
+                if(send_msg(&player1, "REJECT") < 0) {
+                    fprintf(stderr, "Error sending message %s to %d\n", "REJECT", player1.id);
+                }
+                //destroy connection
+                n--; //reduce 
+                return;
+            }
+            //"INIT" received
+            player1.id = *n; //set player id
+            if(send_msg(&player1, "WELCOME") < 0) {
+                fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", player1.id);
+                //destroy connection
+                n--; //reduce 
+                return;
+            }
+            player1.id = *n;
+            return;
+        }
+        case 2 : {
+            break;
+        }
+        case 3 : {
+            break;
+        }
+        case 4 : {
+            break;
+        }
+        default: { // n < 1;
+            return;
+        }
+    }
+}
+
+int send_msg(PLAYER* p, const char* s) {
+    buf = calloc(MSG_SIZE, sizeof(char));
+    sprintf(buf, "%s", s); //set buffer.
+    return send(p->fd, buf, sizeof(char), 0);
 }
 
 void conn_players(PLAYER *player_n, int n) {
     socklen_t addr_len = sizeof(player_n->addr);
     player_n->fd = accept(server.fd, (struct sockaddr *) &player_n->addr, &addr_len);
-    player_n->id = n; //set player id
-}
-
-void enter_game(void) {
-    printf("PLAYERS:\n\t%d\n\t%d\n\t%d\n\t%d\n", player1.id, player2.id, player3.id, player4.id);
-    while(true);
 }
 
 /**
@@ -130,3 +192,44 @@ void set_server_socket(void) {
     }
 }
 
+void reject_connections(void) {
+    struct sockaddr_in client;
+    socklen_t addr_len = sizeof(client);
+    int client_fd = accept(server.fd, (struct sockaddr *) &client, &addr_len);
+    if(client_fd < 0) {
+        fprintf(stderr, "Error accepting expired connection.");
+        return;
+    }
+    buf = calloc(BUFFER_SIZE, sizeof(char));
+    if(recv(player1.fd, buf, sizeof(buf), 0) < 0) {
+        fprintf(stderr, "Error reading buffer message");
+        if(send_msg(&player1, "REJECT") < 0) {
+            fprintf(stderr, "Error sending message %s to %d\n", "REJECT", client_fd);
+        }
+        //destroy connection
+        return;
+    }
+    //Message received.
+    if(send_msg(&player1, "REJECT") < 0) {
+        fprintf(stderr, "Error sending message %s to %d\n", "REJECT", client_fd);
+    }
+    //destroy connection
+    return;
+}
+
+void set_player_lives(void) {
+    player1.lives = NUM_LIVES;
+    player2.lives = NUM_LIVES;
+    player3.lives = NUM_LIVES;
+    player4.lives = NUM_LIVES;
+}
+
+void start_game(void) {
+    printf("PLAYERS:\n\t%d\n\t%d\n\t%d\n\t%d\n", player1.id, player2.id, player3.id, player4.id);
+
+    set_player_lives();
+
+    while(true) {
+        
+    }
+}
