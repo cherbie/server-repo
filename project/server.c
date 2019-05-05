@@ -27,7 +27,7 @@ int main(int argc, char * argv[]) {
     printf("Server is listening on %d\n", port);
 
     int n;
-    err = init_players(&n); //manages the introduction of players to the game
+    err = listenForInit(&n); //manages the introduction of players to the game
     if(err == -2) { //timeout for players joining the game
         fprintf(stderr, "Game timeout due to lack of players joining.\n");
         exit(EXIT_FAILURE);
@@ -59,98 +59,158 @@ int main(int argc, char * argv[]) {
  * returns 0 on success. On failure integer is returned based on following errors:
  * game_initialisation_timeout = -2;
  * failed_connection_establishment = -1;
- */
-int init_players(int * n)
-{
-    *n = 1; //ensure starts at 1
-    printf("%d", *n);
-    while( *n < 5 ) {
-        switch (*n) {
-            case 1 : {
-                conn_players(&player1, *n); //connect client socket
-                listenForInit(n); //try to initiaise game entry for player #n
-                break;
-            }
-            case 2 : {
-                conn_players(&player2, *n); //connect client socket
-                listenForInit(n); //try to initiaise game entry for player #n
-                break;
-            }
-            case 3 : {
-                conn_players(&player3, *n); //connect client socket
-                listenForInit(n); //try to initiaise game entry for player #n
-                break;
-            }
-            case 4 : {
-                conn_players(&player4, *n); //connect client socket
-                listenForInit(n); //try to initiaise game entry for player #n
-                break;
-            }
-            default : break;
-        }
-        if( *n < 0) *n = 0;
-        n++;
-    }
-    return 0;
-}
-
-/**
+ *
  * WAIT for client "INIT" message from 4 players
  * confirm game entry will "WELCOME".
  * Deny game entry with "REJECT".
  */
-void listenForInit(int *n) {
+int listenForInit(int * n) {
     buf = calloc(MSG_SIZE, sizeof(char));
-    switch(*n) {
-        case 1 : {
-            err = recv(player1.fd, buf, sizeof(buf), 0);
-            if(err < 0) {
-                fprintf(stderr, "Error reading buffer message");
-                if(send_msg(&player1, "REJECT") < 0) {
-                    fprintf(stderr, "Error sending message %s to %d\n", "REJECT", player1.fd);
+    while( *n < 5) {
+        switch(*n) {
+            case 1 : {
+                conn_players(&player1, *n); //connect client socket
+                err = recv(player1.fd, buf, sizeof(buf), 0);
+                printf("Player %i sent %s\n", *n, buf);
+                if(err < 0) {
+                    fprintf(stderr, "Error reading buffer message");
+                    if(send_msg(&player1, "REJECT") < 0) {
+                        fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
+                    }
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
                 }
-                //destroy connection
-                n--; //reduce number of players connected
-                return;
-            }
-            else if( strcmp(buf, "INIT") != 0) {
-                if(send_msg(&player1, "REJECT") < 0) {
-                    fprintf(stderr, "Error sending message %s to %d\n", "REJECT", player1.id);
+                else if( strcmp(buf, "INIT") != 0) {
+                    if(send_msg(&player1, "REJECT") < 0) {
+                        fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
+                    }
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
                 }
-                //destroy connection
-                n--; //reduce 
-                return;
+                //"INIT" received
+                player1.id = *n; //set player id
+                if(send_msg(&player1, "WELCOME") < 0) {
+                    fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", *n);
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
+                }
+                player1.id = *n;
+                break;
             }
-            //"INIT" received
-            player1.id = *n; //set player id
-            if(send_msg(&player1, "WELCOME") < 0) {
-                fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", player1.id);
-                //destroy connection
-                n--; //reduce 
-                return;
+            case 2 : {
+                conn_players(&player2, *n); //connect client socket
+                err = recv(player2.fd, buf, sizeof(buf), 0);
+                printf("Player %i sent %s\n", *n, buf);
+                if(err < 0) {
+                    fprintf(stderr, "Error reading buffer message");
+                    if(send_msg(&player2, "REJECT") < 0) {
+                        fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
+                    }
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
+                }
+                else if( strcmp(buf, "INIT") != 0) {
+                    if(send_msg(&player2, "REJECT") < 0) {
+                        fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
+                    }
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
+                }
+                //"INIT" received
+                player2.id = *n; //set player id
+                if(send_msg(&player2, "WELCOME") < 0) {
+                    fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", *n);
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
+                }
+                player2.id = *n;
+                break;
             }
-            player1.id = *n;
-            return;
+            case 3 : {
+                conn_players(&player3, *n); //connect client socket
+                err = recv(player3.fd, buf, sizeof(buf), 0);
+                printf("Player %i sent %s\n", *n, buf);
+                if(err < 0) {
+                    fprintf(stderr, "Error reading buffer message");
+                    if(send_msg(&player3, "REJECT") < 0) {
+                        fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
+                    }
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
+                }
+                else if( strcmp(buf, "INIT") != 0) {
+                    if(send_msg(&player3, "REJECT") < 0) {
+                        fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
+                    }
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
+                }
+                //"INIT" received
+                player3.id = *n; //set player id
+                if(send_msg(&player3, "WELCOME") < 0) {
+                    fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", *n);
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
+                }
+                player3.id = *n;
+                break;
+            }
+            case 4 : {
+                conn_players(&player4, *n); //connect client socket
+                err = recv(player4.fd, buf, sizeof(buf), 0);
+                printf("Player %i sent %s\n", *n, buf);
+                if(err < 0) {
+                    fprintf(stderr, "Error reading buffer message");
+                    if(send_msg(&player4, "REJECT") < 0) {
+                        fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
+                    }
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
+                }
+                else if( strcmp(buf, "INIT") != 0) {
+                    if(send_msg(&player4, "REJECT") < 0) {
+                        fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
+                    }
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
+                }
+                //"INIT" received
+                player4.id = *n; //set player id
+                if(send_msg(&player4, "WELCOME") < 0) {
+                    fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", *n);
+                    //destroy connection
+                    *n = *n -1; //reduce number of players connected
+                    break;
+                }
+                player4.id = *n;
+                break;
+            }
+            default: { // n < 1;
+                printf("case %i\n", *n);
+                break;
+            }
         }
-        case 2 : {
-            break;
-        }
-        case 3 : {
-            break;
-        }
-        case 4 : {
-            break;
-        }
-        default: { // n < 1;
-            return;
-        }
+        if( *n < 0) *n = 0;
+        *n = *n + 1;
     }
+    return 0;
 }
 
 int send_msg(PLAYER* p, const char* s) {
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%s", s); //set buffer.
-    return send(p->fd, buf, sizeof(char), 0);
+    return send(p->fd, buf, sizeof(buf), 0);
 }
 
 void conn_players(PLAYER *player_n, int n) {
@@ -201,16 +261,12 @@ void reject_connections(void) {
         return;
     }
     buf = calloc(BUFFER_SIZE, sizeof(char));
-    if(recv(player1.fd, buf, sizeof(buf), 0) < 0) {
+    if(recv(client_fd, buf, sizeof(buf), 0) < 0) {
         fprintf(stderr, "Error reading buffer message");
-        if(send_msg(&player1, "REJECT") < 0) {
-            fprintf(stderr, "Error sending message %s to %d\n", "REJECT", client_fd);
-        }
-        //destroy connection
-        return;
     }
-    //Message received.
-    if(send_msg(&player1, "REJECT") < 0) {
+    buf = calloc(MSG_SIZE, sizeof(char));
+    sprintf(buf, "%s", "REJECT");
+    if(send(client_fd, buf, sizeof(buf), 0) < 0) {
         fprintf(stderr, "Error sending message %s to %d\n", "REJECT", client_fd);
     }
     //destroy connection
@@ -230,6 +286,12 @@ void start_game(void) {
     set_player_lives();
 
     while(true) {
-        
+        printf("Enter !~ characters to quit program.\n");
+        buf = calloc(MSG_SIZE, sizeof(char));
+        gets(buf);
+        if(strcmp(buf, "!~") == 0) {
+            free(buf);
+            exit(EXIT_SUCCESS);
+        }
     }
 }
