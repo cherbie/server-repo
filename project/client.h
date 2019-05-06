@@ -13,13 +13,12 @@
 typedef struct {
     int fd;
     struct sockaddr_in addr; //The sockaddr_in structure is used to store addresses for the internet address family.
-    int lives;
     char * buf;
-} CLIENT;
+} SERVER;
 
 int port; //global variable
 int err, opt_val;
-CLIENT client;
+SERVER server;
 
 //FUNCITON DECLARATIONS
 void connect_to_server(void);

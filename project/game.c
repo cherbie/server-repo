@@ -1,5 +1,5 @@
 /** CLIENT
- * socket() : create socket and obtain client_fd
+ * socket() : create socket and obtain server_fd
  * connect() : 
  * write() : send()
  * read)() : recv()
@@ -20,13 +20,13 @@ int main(int argc, char* argv[])
 
     //INITIALISE MATCH
     if( init_match() < 0 ) {
-        close(client.fd);
+        close(server.fd);
         exit(EXIT_FAILURE);
     }
     
     while(true) {
         printf("WAITING FOR GAME.\n");
-        gets(client.buf);
+        gets(server.buf);
     }
 }
 
@@ -35,13 +35,13 @@ int main(int argc, char* argv[])
  * @return 0 to indicate success, -1 to indicate failure.
  */
 int send_msg(char * s) {
-    client.buf = calloc(MSG_SIZE, sizeof(char));
-    if(client.buf == NULL) {
+    server.buf = calloc(MSG_SIZE, sizeof(char));
+    if(server.buf == NULL) {
         fprintf(stderr, "send_msg(): error allocating memory to buffer. \n");
         return -1;
     }
-    sprintf(client.buf, "%s", s);
-    if( send(client.fd, client.buf, sizeof(client.buf), 0) < 0 ) {
+    sprintf(server.buf, "%s", s);
+    if( send(server.fd, server.buf, sizeof(server.buf), 0) < 0 ) {
         fprintf(stderr, "Error sending %s to server.", s);
         return -1;
     }
@@ -53,21 +53,21 @@ int send_msg(char * s) {
  *
  */
 void connect_to_server(void) {
-    client.fd = socket(AF_INET, SOCK_STREAM, 0); //create an endpoint for communication
+    server.fd = socket(AF_INET, SOCK_STREAM, 0); //create an endpoint for communication
 
-    if (client.fd < 0){
+    if (server.fd < 0){
         fprintf(stderr,"Could not create socket\n");
         exit(EXIT_FAILURE);
     }
 
-    client.addr.sin_family = AF_INET;
-    client.addr.sin_port = htons(port); //converts the unsigned short integer hostshort from host byte order to network byte order.
-    client.addr.sin_addr.s_addr = htonl(INADDR_ANY); //converts the unsigned integer hostlong from host byte order to network byte order.
+    server.addr.sin_family = AF_INET;
+    server.addr.sin_port = htons(port); //converts the unsigned short integer hostshort from host byte order to network byte order.
+    server.addr.sin_addr.s_addr = htonl(INADDR_ANY); //converts the unsigned integer hostlong from host byte order to network byte order.
 
     opt_val = 1;
-    setsockopt(client.fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof opt_val);
+    setsockopt(server.fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof opt_val);
 
-    err = connect(client.fd, (struct sockaddr *) &client.addr, sizeof(client.addr));
+    err = connect(server.fd, (struct sockaddr *) &server.addr, sizeof(server.addr));
     if(err < 0) {
         fprintf(stderr, "Could not connect to server.\n");
         exit(EXIT_FAILURE);
@@ -81,26 +81,26 @@ void connect_to_server(void) {
 int init_match(void) {
     connect_to_server();
 
-    printf("Connected to server on port: %d\n\tclient:\t%d\n", port, client.fd);
+    printf("Connected to server on port: %d\n\tclient:\t%d\n", port, server.fd);
 
     if( send_msg("INIT") < 0 ) {
         return -1;
     }
 
-    client.buf = calloc(MSG_SIZE, sizeof(char));
-    if( recv(client.fd, client.buf, sizeof(client.buf), 0) < 0) {
+    server.buf = calloc(MSG_SIZE, sizeof(char));
+    if( recv(server.fd, server.buf, sizeof(server.buf), 0) < 0) {
         fprintf(stderr, "Error receiving reply to %s message sent.\n", "INIT");
     }
 
-    if( strcmp(client.buf, "REJECT") == 0) { //REJECT received
+    if( strcmp(server.buf, "REJECT") == 0) { //REJECT received
         fprintf(stderr, "Game entry rejected.\n");
         return -1;
     }
-    if( strcmp(client.buf, "WELCOME") == 0) {
-        printf("%s", client.buf);
+    if( strcmp(server.buf, "WELCOME") == 0) {
+        printf("%s", server.buf);
         return 0;
     }
-    fprintf(stderr, "Garbage message packet received.\n\tmessage: %s\n", client.buf);
+    fprintf(stderr, "Garbage message packet received.\n\tmessage: %s\n", server.buf);
     return -1;
 }
 
