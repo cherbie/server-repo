@@ -77,7 +77,7 @@ int listenForInit(int * n) {
                     if(send_msg(&player1, "REJECT") < 0) {
                         fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
                     }
-                    //destroy connection
+                    close(player1.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -85,7 +85,7 @@ int listenForInit(int * n) {
                     if(send_msg(&player1, "REJECT") < 0) {
                         fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
                     }
-                    //destroy connection
+                    close(player1.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -93,7 +93,7 @@ int listenForInit(int * n) {
                 player1.id = *n; //set player id
                 if(send_msg(&player1, "WELCOME") < 0) {
                     fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", *n);
-                    //destroy connection
+                    close(player1.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -109,7 +109,7 @@ int listenForInit(int * n) {
                     if(send_msg(&player2, "REJECT") < 0) {
                         fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
                     }
-                    //destroy connection
+                    close(player2.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -117,7 +117,7 @@ int listenForInit(int * n) {
                     if(send_msg(&player2, "REJECT") < 0) {
                         fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
                     }
-                    //destroy connection
+                    close(player2.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -125,7 +125,7 @@ int listenForInit(int * n) {
                 player2.id = *n; //set player id
                 if(send_msg(&player2, "WELCOME") < 0) {
                     fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", *n);
-                    //destroy connection
+                    close(player2.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -141,7 +141,7 @@ int listenForInit(int * n) {
                     if(send_msg(&player3, "REJECT") < 0) {
                         fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
                     }
-                    //destroy connection
+                    close(player3.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -149,7 +149,7 @@ int listenForInit(int * n) {
                     if(send_msg(&player3, "REJECT") < 0) {
                         fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
                     }
-                    //destroy connection
+                    close(player3.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -157,7 +157,7 @@ int listenForInit(int * n) {
                 player3.id = *n; //set player id
                 if(send_msg(&player3, "WELCOME") < 0) {
                     fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", *n);
-                    //destroy connection
+                    close(player3.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -173,7 +173,7 @@ int listenForInit(int * n) {
                     if(send_msg(&player4, "REJECT") < 0) {
                         fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
                     }
-                    //destroy connection
+                    close(player4.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -181,7 +181,7 @@ int listenForInit(int * n) {
                     if(send_msg(&player4, "REJECT") < 0) {
                         fprintf(stderr, "Error sending message %s to %d\n", "REJECT", *n);
                     }
-                    //destroy connection
+                    close(player4.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -189,7 +189,7 @@ int listenForInit(int * n) {
                 player4.id = *n; //set player id
                 if(send_msg(&player4, "WELCOME") < 0) {
                     fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", *n);
-                    //destroy connection
+                    close(player4.fd);
                     *n = *n -1; //reduce number of players connected
                     break;
                 }
@@ -269,7 +269,7 @@ void reject_connections(void) {
     if(send(client_fd, buf, sizeof(buf), 0) < 0) {
         fprintf(stderr, "Error sending message %s to %d\n", "REJECT", client_fd);
     }
-    //destroy connection
+    close(client_fd);
     return;
 }
 
