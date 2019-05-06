@@ -8,10 +8,10 @@
 #include <unistd.h>
 
 #define BUFFER_SIZE 1024
-#define MSG_SIZE 14
-#define NUM_LIVES 3
-#define NUM_PLAYERS 4
-#define NUM_SERVERS 1
+#define MSG_SIZE 14 //bytes
+#define NUM_LIVES 3 
+#define NUM_PLAYERS 2 //adjust number of players
+#define NUM_SERVERS 1 //allow for scaling
 
 //TYPES
 typedef struct {

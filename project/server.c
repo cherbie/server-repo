@@ -37,12 +37,12 @@ int main(int argc, char * argv[]) {
     }
     
     switch(fork()) {
-        case 0 : { //child parent
+        case 0 : { //child
             printf("child\n");
             start_game();
         }
         case -1 : { //error forking
-            perror("UNEXPECTED APPLICATION ERROR: ");
+            perror("UNEXPECTED APPLICATION ERROR: FORKING_ERROR.\n");
         }
         default : { //parent
         printf("parent.\n");
