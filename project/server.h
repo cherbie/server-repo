@@ -11,6 +11,7 @@
 #define MSG_SIZE 14
 #define NUM_LIVES 3
 #define NUM_PLAYERS 4
+#define NUM_SERVERS 1
 
 //TYPES
 typedef struct {
@@ -27,7 +28,7 @@ typedef struct {
 
 //GLOBAL VARIABLES
 int port;
-SERVER server; //socket integer descriptors
+SERVER * servers; //socket integer descriptors
 PLAYER * players; //define players
 int err, opt_val; //temporary variables
 char *buf; //socket input and output stream buffer
@@ -35,7 +36,7 @@ char *buf; //socket input and output stream buffer
 //FUNCTION DECLARATIONS
 void conn_players(PLAYER *);
 void start_game(void);
-void set_server_socket(void);
+void set_server_socket(int);
 int listenForInit(int);
 int send_msg(PLAYER *, const char *);
 void reject_connections(void);
