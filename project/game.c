@@ -26,6 +26,7 @@ int main(int argc, char* argv[])
     
     while(true) {
         printf("WAITING FOR GAME.\n");
+        gets(client.buf);
     }
 }
 
