@@ -64,12 +64,12 @@ int main(int argc, char * argv[]) {
  * Deny game entry with "REJECT".
  */
 int listenForInit(int n) {
-    buf = calloc(MSG_SIZE, sizeof(char));
     for(int i = 0; i < n; i++) {
-        int id = i +1;
+        int id = i+1;
         players = realloc( players, (i+1) * sizeof(PLAYER)); //add another player
         conn_players(&players[i]); //connect client socket
-        err = recv(players[i].fd, buf, sizeof(buf), 0);
+        buf = calloc(MSG_SIZE, sizeof(char));
+        err = recv(players[i].fd, buf, MSG_SIZE, 0);
         printf("Player %i sent %s\n", id, buf);
         if(err < 0) {
             fprintf(stderr, "Error reading buffer message");
@@ -108,7 +108,9 @@ int listenForInit(int n) {
 int send_msg(PLAYER* p, const char* s) {
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%s", s); //set buffer.
-    return send(p->fd, buf, sizeof(buf), 0);
+    int err = send(p->fd, buf, strlen(buf), 0);
+    printf("sent: %i\n", err);
+    return err;
 }
 
 void conn_players(PLAYER *player) {
@@ -163,12 +165,12 @@ void reject_connections(void) {
         return;
     }
     buf = calloc(BUFFER_SIZE, sizeof(char));
-    if(recv(client_fd, buf, sizeof(buf), 0) < 0) {
+    if(recv(client_fd, buf, MSG_SIZE, 0) < 0) {
         fprintf(stderr, "Error reading buffer message");
     }
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%s", "REJECT");
-    if(send(client_fd, buf, sizeof(buf), 0) < 0) {
+    if(send(client_fd, buf, strlen(buf), 0) < 0) {
         fprintf(stderr, "Error sending message %s to %d\n", "REJECT", client_fd);
     }
     close(client_fd);
@@ -189,11 +191,12 @@ void set_player_lives(void) {
 void send_start(void) {
     for(int i = 0; i < servers[0].num_players; i++) {
         buf = calloc(MSG_SIZE, sizeof(char));
-        sprintf(buf, "START,%d,%d", servers[0].num_players, players[i].lives);
+        printf(" players lives: %i\n", players[i].lives);
+        sprintf(buf, "%s,%d,%d", "START", servers[0].num_players, players[i].lives);
         if(send_msg(&players[i], buf) < 0) {
             send_msg(&players[i], buf); //try again
         }
-        printf("sent %s", buf);
+        printf("sent %s\n", buf);
     }
 }
 
@@ -204,11 +207,11 @@ void send_start(void) {
 void send_cancel(void) {
     for(int i = 0; i < servers[0].num_players; i++) {
         buf = calloc(MSG_SIZE, sizeof(char));
-        sprintf(buf, "CANCEL");
+        sprintf(buf, "%s", "CANCEL");
         if(send_msg(&players[i], buf) < 0) {
             send_msg(&players[i], buf); //try again
         }
-        printf("sent -> %s", buf);
+        printf("sent -> %s\n", buf);
     }
 }
 /** 
@@ -217,7 +220,7 @@ void send_cancel(void) {
  */
 int start_game(void) {
     printf("GAME PLAYERS\n");
-    for(int i = 0; i < NUM_PLAYERS; i++)
+    for(int i = 0; i < servers[0].num_players; i++)
         printf("\t%d\n", players[i].id);
 
     if(servers[0].num_players == NUM_PLAYERS) { //ENOUGH PLAYERS IN THE GAME

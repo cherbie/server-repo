@@ -8,14 +8,16 @@
 #include <unistd.h>
 
 #define BUFFER_SIZE 1024
-#define MSG_SIZE 14
+#define MSG_SIZE 1000
 
 typedef struct {
     int fd;
     struct sockaddr_in addr; //The sockaddr_in structure is used to store addresses for the internet address family.
-    char * buf;
+    int players;
+    int lives;
 } SERVER;
 
+char * buf;
 int port; //global variable
 int err, opt_val;
 SERVER server;
@@ -24,4 +26,4 @@ SERVER server;
 void connect_to_server(void);
 int init_match(void);
 int send_msg(char *);
-
+int extract_start(char *);

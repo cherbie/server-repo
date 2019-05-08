@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
     
     while(true) {
         printf("WAITING FOR GAME.\n");
-        gets(server.buf);
+        gets(buf);
     }
 }
 
@@ -35,13 +35,13 @@ int main(int argc, char* argv[])
  * @return 0 to indicate success, -1 to indicate failure.
  */
 int send_msg(char * s) {
-    server.buf = calloc(MSG_SIZE, sizeof(char));
-    if(server.buf == NULL) {
+    buf = calloc(MSG_SIZE, sizeof(char));
+    if(buf == NULL) {
         fprintf(stderr, "send_msg(): error allocating memory to buffer. \n");
         return -1;
     }
-    sprintf(server.buf, "%s", s);
-    if( send(server.fd, server.buf, sizeof(server.buf), 0) < 0 ) {
+    sprintf(buf, "%s", s);
+    if( send(server.fd, buf, strlen(buf), 0) < 0 ) {
         fprintf(stderr, "Error sending %s to server.", s);
         return -1;
     }
@@ -75,6 +75,55 @@ void connect_to_server(void) {
 }
 
 /**
+ * Tokenises char * paramater and sets
+ * sets: server.lives
+ * sets: server.players
+ * @return 0 to indicate success, or -1 to indicate stop game involvement.
+ */
+int extract_start(char * s) {
+    const char delim[2] = ",";
+    int n = 0; //start at case 0
+
+    char * tok = strtok(s, delim);
+    while( tok != NULL ) {
+        printf("token: %s\n", tok);
+        switch (n) {
+            case 0 : { //START || CANCEL
+                if(strcmp(tok, "START") == 0) {
+                    printf("%s\n", tok);
+                }
+                else { //received "CANCEL"
+                    printf("%s\n", tok);
+                    return -1;
+                }
+                n++;
+                tok = strtok(NULL, delim);
+                break;
+            }
+            case 1 : { //number of players
+                server.players = atoi(tok);
+                n++;
+                tok = strtok(NULL, delim);
+                printf("--> %s\n", tok); //null
+                break;
+            }
+            case 2 : { //number of lives
+                printf("REACHED REACHED REACHED.\n");
+                server.lives = atoi(tok);
+                n++;
+                tok = strtok(NULL, delim);
+                break;
+            }
+            default : 
+                printf("default\n");
+                return 0;
+        }
+    }
+    printf("EXIT EXIT EXIT\n");
+    return 0;
+}
+
+/**
  * Handles funcition calls to initialise/enter game.
  * @return 0 to indicate game entry, -1 to indicate failure to enter game.
  */
@@ -87,20 +136,36 @@ int init_match(void) {
         return -1;
     }
 
-    server.buf = calloc(MSG_SIZE, sizeof(char));
-    if( recv(server.fd, server.buf, sizeof(server.buf), 0) < 0) {
+    buf = calloc(MSG_SIZE, sizeof(char));
+    if( recv(server.fd, buf, MSG_SIZE, 0) < 0) {
         fprintf(stderr, "Error receiving reply to %s message sent.\n", "INIT");
     }
 
-    if( strcmp(server.buf, "REJECT") == 0) { //REJECT received
+    //REJECT received
+    if( strcmp(buf, "REJECT") == 0) { 
         fprintf(stderr, "Game entry rejected.\n");
         return -1;
     }
-    if( strcmp(server.buf, "WELCOME") == 0) {
-        printf("%s", server.buf);
-        return 0;
+    //RECEIVE WELCOME
+    if( strcmp(buf, "WELCOME") == 0) {
+        printf("%s\n", buf);
     }
-    fprintf(stderr, "Garbage message packet received.\n\tmessage: %s\n", server.buf);
-    return -1;
+    else {
+        fprintf(stderr, "Garbage message packet received.\n\tmessage: %s\n", buf);
+        return -1;
+    }
+
+    //RECEIVE START
+    buf = calloc(MSG_SIZE, sizeof(char));
+    err = recv(server.fd, buf, MSG_SIZE, 0);
+    printf("%i\n", err);
+    if( err < 0) 
+        fprintf(stderr, "Error receiving %s message sent.\n", "START");
+    printf("RECEIVED: %s\n", buf);
+    if(strcmp(buf, "CANCEL") == 0) {
+        printf("%s\n", buf);
+        return -1;
+    }
+    return extract_start(buf); //tokenise "START" message
 }
 
