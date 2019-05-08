@@ -24,6 +24,7 @@ typedef struct {
 typedef struct {
     int fd;
     struct sockaddr_in addr; //The sockaddr_in structure is used to store addresses for the internet address family.
+    int num_players;
 } SERVER;
 
 //GLOBAL VARIABLES
@@ -35,11 +36,12 @@ char *buf; //socket input and output stream buffer
 
 //FUNCTION DECLARATIONS
 void conn_players(PLAYER *);
-void start_game(void);
+int start_game(void);
 void set_server_socket(int);
 int listenForInit(int);
 int send_msg(PLAYER *, const char *);
 void reject_connections(void);
 void set_player_lives(void);
-
+void send_start(void);
+void send_cancel(void);
 

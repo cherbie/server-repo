@@ -96,11 +96,15 @@ int listenForInit(int n) {
             continue;
         }
         players[i].id = id;
+        servers[0].num_players = id; //set number of players
         continue;
     }
     return 0;
 }
 
+/**
+ * @return the return value of socket send() function.
+ */
 int send_msg(PLAYER* p, const char* s) {
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%s", s); //set buffer.
@@ -172,17 +176,58 @@ void reject_connections(void) {
 }
 
 void set_player_lives(void) {
-    for(int i = 0; i < NUM_PLAYERS; i++) {
+    for(int i = 0; i < servers[0].num_players; i++) {
         players[i].lives = NUM_LIVES;
     }
 }
 
-void start_game(void) {
+/**
+ * Send to all active game players "START,%d,%d"
+ * with number of players & lives respectively
+ * On failure to send, message will attempt to send another time.
+ */
+void send_start(void) {
+    for(int i = 0; i < servers[0].num_players; i++) {
+        buf = calloc(MSG_SIZE, sizeof(char));
+        sprintf(buf, "START,%d,%d", servers[0].num_players, players[i].lives);
+        if(send_msg(&players[i], buf) < 0) {
+            send_msg(&players[i], buf); //try again
+        }
+        printf("sent %s", buf);
+    }
+}
+
+/**
+ * Send to all active game players "CANCEL"
+ * On failure message will attempt to send one more time.
+ */
+void send_cancel(void) {
+    for(int i = 0; i < servers[0].num_players; i++) {
+        buf = calloc(MSG_SIZE, sizeof(char));
+        sprintf(buf, "CANCEL");
+        if(send_msg(&players[i], buf) < 0) {
+            send_msg(&players[i], buf); //try again
+        }
+        printf("sent -> %s", buf);
+    }
+}
+/** 
+ * @return 0 to indicate successful execution. -1 to indicate failure.
+ *
+ */
+int start_game(void) {
     printf("GAME PLAYERS\n");
     for(int i = 0; i < NUM_PLAYERS; i++)
         printf("\t%d\n", players[i].id);
 
-    set_player_lives();
+    if(servers[0].num_players == NUM_PLAYERS) { //ENOUGH PLAYERS IN THE GAME
+        set_player_lives(); //set players initial lives
+        send_start(); //send "START, %d, %d" packet
+    }
+    else {
+        send_cancel(); //send "CANCEL"
+        return -1;
+    }
 
     while(true) {
         printf("Enter !~ characters to quit program.\n");
