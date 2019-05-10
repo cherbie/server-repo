@@ -147,6 +147,7 @@ int init_match(void) {
         return -1;
     }
     //RECEIVE WELCOME
+    //receive_welcome(buf);
     if( strcmp(buf, "WELCOME") == 0) {
         printf("%s\n", buf);
     }
@@ -167,5 +168,33 @@ int init_match(void) {
         return -1;
     }
     return extract_start(buf); //tokenise "START" message
+}
+
+/*
+ * @return 0 to indicate success, -1 to indicate failure
+ */
+int receive_welcome(SERVER * p, char * s) {
+    char delim[2] = ",";
+    char * tok = strtok(s, delim);
+    int n = 0;
+    while(tok != NULL) {
+        switch (n) {
+            case 0 : { //check for "WELCOME"
+                if( strcmp(tok, "WELCOME") != 0)
+                    return -1;
+                printf("\t%s\n", tok);
+                n++;
+                continue;
+            }
+            case 1 : { //set player id
+                p->id = atoi(tok);
+                tok = strtok(NULL, delim);
+                printf("\t tok:\t%s\n", tok); //null
+                return 0;
+            }
+            default : continue;
+        }
+    }
+    return -1;
 }
 

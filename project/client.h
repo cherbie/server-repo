@@ -15,6 +15,7 @@ typedef struct {
     struct sockaddr_in addr; //The sockaddr_in structure is used to store addresses for the internet address family.
     int players;
     int lives;
+    int id;
 } SERVER;
 
 char * buf;
@@ -27,3 +28,4 @@ void connect_to_server(void);
 int init_match(void);
 int send_msg(char *);
 int extract_start(char *);
+int receive_welcome(SERVER *, char *);

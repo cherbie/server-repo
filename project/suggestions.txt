@@ -1,1 +1,2 @@
-Mention security issues in perth
+1. Mention security issues in perth
+2. How to deal with checking if passed string is in fact a number;

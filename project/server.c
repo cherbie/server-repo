@@ -70,7 +70,7 @@ int listenForInit(int n) {
         conn_players(&players[i]); //connect client socket
         buf = calloc(MSG_SIZE, sizeof(char));
         err = recv(players[i].fd, buf, MSG_SIZE, 0);
-        printf("Player %i sent %s\n", id, buf);
+        printf("\tPlayer %i sent %s\n", id, buf);
         if(err < 0) {
             fprintf(stderr, "Error reading buffer message");
             if(send_msg(&players[i], "REJECT") < 0) {
@@ -80,7 +80,7 @@ int listenForInit(int n) {
             i--; //reduce number of players connected
             continue;
         }
-        else if( strcmp(buf, "INIT") != 0) {
+        else if(strcmp(buf, "INIT") != 0) {
             if(send_msg(&players[i], "REJECT") < 0) {
                 fprintf(stderr, "Error sending message %s to %d\n", "REJECT", id);
             }
@@ -89,13 +89,13 @@ int listenForInit(int n) {
             continue;
         }
         //"INIT" received
+        players[i].id = id;
         if(send_msg(&players[i], "WELCOME") < 0) {
             fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", id);
             close(players[i].fd);
             n--; //reduce number of players connected
             continue;
         }
-        players[i].id = id;
         servers[0].num_players = id; //set number of players
         continue;
     }
@@ -103,13 +103,24 @@ int listenForInit(int n) {
 }
 
 /**
+ *
+ *
+ */
+int send_welcome(PLAYER * p) {
+    char * str = calloc(MSG_SIZE, sizeof(char));
+    if(sprintf(str, "%s,%d", "WELCOME", p->id) < 0) return -1;
+    int ret = send_msg(p, str);
+    free(str);
+    return ret;
+}
+/**
  * @return the return value of socket send() function.
  */
 int send_msg(PLAYER* p, const char* s) {
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%s", s); //set buffer.
     int err = send(p->fd, buf, strlen(buf), 0);
-    printf("sent: %i\n", err);
+    printf("\tsent: %i\n", err);
     return err;
 }
 
@@ -191,12 +202,11 @@ void set_player_lives(void) {
 void send_start(void) {
     for(int i = 0; i < servers[0].num_players; i++) {
         buf = calloc(MSG_SIZE, sizeof(char));
-        printf(" players lives: %i\n", players[i].lives);
         sprintf(buf, "%s,%d,%d", "START", servers[0].num_players, players[i].lives);
         if(send_msg(&players[i], buf) < 0) {
             send_msg(&players[i], buf); //try again
         }
-        printf("sent %s\n", buf);
+        printf("\tsent %s\n", buf);
     }
 }
 
@@ -211,7 +221,7 @@ void send_cancel(void) {
         if(send_msg(&players[i], buf) < 0) {
             send_msg(&players[i], buf); //try again
         }
-        printf("sent -> %s\n", buf);
+        printf("\tsent -> %s\n", buf);
     }
 }
 /** 
