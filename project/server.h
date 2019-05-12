@@ -44,4 +44,4 @@ void reject_connections(void);
 void set_player_lives(void);
 void send_start(void);
 void send_cancel(void);
-
+int send_welcome(PLAYER *);

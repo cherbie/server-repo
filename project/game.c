@@ -86,14 +86,13 @@ int extract_start(char * s) {
 
     char * tok = strtok(s, delim);
     while( tok != NULL ) {
-        printf("token: %s\n", tok);
         switch (n) {
             case 0 : { //START || CANCEL
                 if(strcmp(tok, "START") == 0) {
-                    printf("%s\n", tok);
+                    printf("start = %s\n", tok);
                 }
                 else { //received "CANCEL"
-                    printf("%s\n", tok);
+                    printf("cancel = %s\n", tok);
                     return -1;
                 }
                 n++;
@@ -104,22 +103,19 @@ int extract_start(char * s) {
                 server.players = atoi(tok);
                 n++;
                 tok = strtok(NULL, delim);
-                printf("--> %s\n", tok); //null
+                printf("num_players = %s\n", tok); //null
                 break;
             }
             case 2 : { //number of lives
-                printf("REACHED REACHED REACHED.\n");
                 server.lives = atoi(tok);
                 n++;
                 tok = strtok(NULL, delim);
                 break;
             }
             default : 
-                printf("default\n");
-                return 0;
+                break;
         }
     }
-    printf("EXIT EXIT EXIT\n");
     return 0;
 }
 
@@ -147,10 +143,8 @@ int init_match(void) {
         return -1;
     }
     //RECEIVE WELCOME
-    //receive_welcome(buf);
-    if( strcmp(buf, "WELCOME") == 0) {
+    if(receive_welcome(&server, buf) == 0)
         printf("%s\n", buf);
-    }
     else {
         fprintf(stderr, "Garbage message packet received.\n\tmessage: %s\n", buf);
         return -1;
@@ -159,14 +153,9 @@ int init_match(void) {
     //RECEIVE START
     buf = calloc(MSG_SIZE, sizeof(char));
     err = recv(server.fd, buf, MSG_SIZE, 0);
-    printf("%i\n", err);
     if( err < 0) 
         fprintf(stderr, "Error receiving %s message sent.\n", "START");
     printf("RECEIVED: %s\n", buf);
-    if(strcmp(buf, "CANCEL") == 0) {
-        printf("%s\n", buf);
-        return -1;
-    }
     return extract_start(buf); //tokenise "START" message
 }
 
@@ -182,14 +171,14 @@ int receive_welcome(SERVER * p, char * s) {
             case 0 : { //check for "WELCOME"
                 if( strcmp(tok, "WELCOME") != 0)
                     return -1;
-                printf("\t%s\n", tok);
                 n++;
+                tok = strtok(NULL, delim);
                 continue;
             }
             case 1 : { //set player id
                 p->id = atoi(tok);
+                printf("\t tok:\t%s\tplayer id:\t%d\n", tok, p->id); //null
                 tok = strtok(NULL, delim);
-                printf("\t tok:\t%s\n", tok); //null
                 return 0;
             }
             default : continue;

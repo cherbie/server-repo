@@ -38,14 +38,12 @@ int main(int argc, char * argv[]) {
     
     switch(fork()) {
         case 0 : { //child
-            printf("child\n");
             start_game();
         }
         case -1 : { //error forking
             perror("UNEXPECTED APPLICATION ERROR: FORKING_ERROR.\n");
         }
         default : { //parent
-        printf("parent.\n");
             while(true)
                 reject_connections();
         }
@@ -90,10 +88,10 @@ int listenForInit(int n) {
         }
         //"INIT" received
         players[i].id = id;
-        if(send_msg(&players[i], "WELCOME") < 0) {
+        if(send_welcome(&players[i]) < 0) {
             fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", id);
-            close(players[i].fd);
-            n--; //reduce number of players connected
+            close(players[i].fd); //terminate connection
+            i--; //reduce number of players connected
             continue;
         }
         servers[0].num_players = id; //set number of players
@@ -103,8 +101,8 @@ int listenForInit(int n) {
 }
 
 /**
- *
- *
+ * Send welcome message to client.
+ * @return 0 to indicate success, -1 to indicate error
  */
 int send_welcome(PLAYER * p) {
     char * str = calloc(MSG_SIZE, sizeof(char));
