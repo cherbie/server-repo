@@ -146,7 +146,7 @@ int init_match(void) {
     if(receive_welcome(&server, buf) == 0)
         printf("%s\n", buf);
     else {
-        fprintf(stderr, "Garbage message packet received.\n\tmessage: %s\n", buf);
+        fprintf(stderr, "Garbage message received.\n\tmessage: %s\n", buf);
         return -1;
     }
 
