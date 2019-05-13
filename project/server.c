@@ -24,6 +24,11 @@ int main(int argc, char * argv[]) {
 
     port = atoi(argv[1]);
     set_server_socket(NUM_SERVERS); //EXIT_FAILURE UPON ERROR
+    if(construct_queue(NUM_PLAYERS) < 0) {
+        fprintf(stderr, "UNABLE TO ALLOCATE MEMORY TO STACK\n");
+        exit(EXIT_FAILURE);
+    }
+    
     printf("Server is listening on %d\n", port);
 
     err = listenForInit(NUM_PLAYERS); //manages the introduction of players to the game
@@ -63,7 +68,47 @@ int main(int argc, char * argv[]) {
  * confirm game entry will "WELCOME".
  * Deny game entry with "REJECT".
  */
-int listenForInit(int n) {
+int listenForInit(int x) {
+    int n = -1;
+    while(!isFull(&queue)) {
+        n = queue.count; //player id being added
+        players = realloc( players, (n+1) * sizeof(PLAYER)); //add another player
+        conn_players(&players[n]); //connect client socket
+        enqueue(&queue, &players[n]);
+        buf = calloc(MSG_SIZE, sizeof(char));
+        err = recv(players[n].fd, buf, MSG_SIZE, 0);
+
+        printf("\tPlayer %i sent %s\n", n+1, buf);
+        if(err < 0) {
+            fprintf(stderr, "Error reading buffer message");
+            if(send_msg(&players[n], "REJECT") < 0) {
+                fprintf(stderr, "Error sending message %s to %d\n", "REJECT", n+1);
+            }
+            close(players[n].fd);
+            dequeue_last(&queue); //reduce number of players connected
+            continue;
+        }
+        else if(strcmp(buf, "INIT") != 0) {
+            if(send_msg(&players[n], "REJECT") < 0) {
+                fprintf(stderr, "Error sending message %s to %d\n", "REJECT", n+1);
+            }
+            close(players[n].fd);
+            dequeue_last(&queue); //reduce number of players connected
+            continue;
+        }
+        //"INIT" received
+        players[n].id = queue.count;
+        if(send_welcome(&players[n]) < 0) {
+            fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", players[n].id);
+            close(players[n].fd); //terminate connection
+            dequeue_last(&queue); //reduce number of players connected
+            continue;
+        }
+        servers[0].num_players = queue.count; //set number of players
+        continue;
+    }
+    return 0;
+    /*
     for(int i = 0; i < n; i++) {
         int id = i+1;
         players = realloc( players, (i+1) * sizeof(PLAYER)); //add another player
@@ -100,6 +145,7 @@ int listenForInit(int n) {
         continue;
     }
     return 0;
+    */
 }
 
 /**
@@ -288,4 +334,15 @@ void roll_dice(SERVER * s) {
 
 void send_success(PLAYER * p) {
 
+}
+
+/**
+ * CONSTRUCTOR FOR QUEUE ADT
+ * @return 0 to indicate success, -1 to indicate failure
+ */
+int construct_queue(int num) {
+    queue.front = 0;
+    queue.count = 0;
+    queue.length = num;
+    return 0;
 }

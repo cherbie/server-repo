@@ -11,7 +11,7 @@
 #define BUFFER_SIZE 1024
 #define MSG_SIZE 14 //bytes
 #define NUM_LIVES 3 
-#define NUM_PLAYERS 2 //adjust number of players
+#define NUM_PLAYERS 3 //adjust number of players
 #define NUM_SERVERS 1 //allow for scaling
 #define NUM_DICE 2
 
@@ -37,13 +37,14 @@ typedef struct {
     PLAYER * elements[NUM_PLAYERS];
     int front;
     int count;
-    int len;;
+    int length;
 }QUEUE;
 
 //GLOBAL VARIABLES
 int port;
 SERVER * servers; //socket integer descriptors
 PLAYER * players; //define players
+QUEUE queue;
 int err, opt_val; //temporary variables
 char *buf; //socket input and output stream buffer
 
@@ -61,3 +62,14 @@ int send_welcome(PLAYER *);
 void receive_move(PLAYER *);
 void roll_dice(SERVER *);
 void send_success(PLAYER *);
+int construct_queue(int);
+
+//QUEUE FUNCTION DECLARATIONS
+bool isFull(QUEUE *);
+bool isEmpty(QUEUE *);
+PLAYER * examine(QUEUE *);
+int size(QUEUE *);
+int enqueue(QUEUE *, PLAYER *);
+PLAYER * dequeue_front(QUEUE *);
+PLAYER * dequeue_last(QUEUE *);
+
