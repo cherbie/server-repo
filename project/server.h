@@ -34,7 +34,7 @@ typedef struct {
 } SERVER;
 
 typedef struct {
-    int elements[NUM_PLAYERS];
+    PLAYER * elements[NUM_PLAYERS];
     int front;
     int count;
     int len;;

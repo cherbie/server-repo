@@ -20,11 +20,11 @@ int size(QUEUE * q) {
 /**
  * @return 0 to indicate success, -1 to indicate failure
  */
-int enqueue(QUEUE * q, int data) {
+int enqueue(QUEUE * q, PLAYER * player) {
     if(!isFull(q)) {
         int last = abs((q->front + q->count))%q->len; //cyclic property of queue
         q->count++; //increment count of elements
-        q->elements[last] = data;
+        q->elements[last] = player;
         return 0;
     }
     else 
@@ -34,16 +34,16 @@ int enqueue(QUEUE * q, int data) {
 /**
  * @return int id on success, -1 on failure;
  */
-int dequeue(QUEUE * q) {
+PLAYER * dequeue(QUEUE * q) {
    if(!isEmpty(q)) {
-        int id = q->elements[q->front];
-        q->elements[q->front] = -1; //erase memory address
+        PLAYER * player = q->elements[q->front];
+        q->elements[q->front] = NULL; //erase memory address
         q->front = (++q->front)%q->len;
         q->count--; //reduce number of elements in the queue
-        return id;
+        return player;
     }
     else
-        return -1;
+        return NULL;
 }
 
 int main(int argc, char * argv[]) {
@@ -52,16 +52,22 @@ int main(int argc, char * argv[]) {
     queue.count = 0;
     queue.len = NUM_PLAYERS;
 
-    enqueue(&queue, 2);
-    printf("%d\n", dequeue(&queue));
-    enqueue(&queue, 4);
-    enqueue(&queue, 6);
-    printf("%d\n", enqueue(&queue, 9));
-    printf("%d\n", examine(&queue));
-    printf("%d\n", dequeue(&queue));
-    printf("%d\n", examine(&queue));
-    printf("%d\n", enqueue(&queue, 7));
-    while(examine(&queue) != -1) {
-        printf("-%d\t", dequeue(&queue));
+    players = malloc(4 * sizeof(players));
+    players[0].id = 2;
+    players[1].id = 5;
+    players[2].id = 9;
+    players[3].id = 7;
+
+    enqueue(&queue, &players[0]);
+    printf("%d\n", dequeue(&queue)->id);
+    enqueue(&queue, &players[1]);
+    enqueue(&queue, &players[2]);
+    printf("%d\n", enqueue(&queue, &players[3]));
+    printf("%d\n", examine(&queue)->id);
+    printf("%d\n", dequeue(&queue)->id);
+    printf("%d\n", examine(&queue)->id);
+    printf("%d\n", enqueue(&queue, &players[3]));
+    while(examine(&queue) != NULL) {
+        printf("-%d\t", dequeue(&queue)->id);
     }
 }
