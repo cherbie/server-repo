@@ -33,6 +33,13 @@ typedef struct {
     int * dice;
 } SERVER;
 
+typedef struct {
+    int elements[NUM_PLAYERS];
+    int front;
+    int count;
+    int len;;
+}QUEUE;
+
 //GLOBAL VARIABLES
 int port;
 SERVER * servers; //socket integer descriptors
