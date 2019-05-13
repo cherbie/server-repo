@@ -23,6 +23,7 @@ typedef struct {
     int id;
     int lives;
     char * move;
+    int roll;
     bool alive;
 } PLAYER;
 
@@ -59,10 +60,14 @@ void set_player_lives(void);
 void send_start(void);
 void send_cancel(void);
 int send_welcome(PLAYER *);
-void receive_move(PLAYER *);
+int receive_move(PLAYER *);
 void roll_dice(SERVER *);
-void send_success(PLAYER *);
+int send_success(PLAYER *);
 int construct_queue(int);
+int interpret_move(PLAYER *, char *);
+bool move_is_correct(PLAYER *);
+int send_pass(PLAYER *);
+int send_fail(PLAYER *);
 
 //QUEUE FUNCTION DECLARATIONS
 bool isFull(QUEUE *);

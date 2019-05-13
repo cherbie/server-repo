@@ -51,44 +51,6 @@ int listenForInit(int x) {
         continue;
     }
     return 0;
-    /*
-    for(int i = 0; i < n; i++) {
-        int id = i+1;
-        players = realloc( players, (i+1) * sizeof(PLAYER)); //add another player
-        conn_players(&players[i]); //connect client socket
-        buf = calloc(MSG_SIZE, sizeof(char));
-        err = recv(players[i].fd, buf, MSG_SIZE, 0);
-        printf("\tPlayer %i sent %s\n", id, buf);
-        if(err < 0) {
-            fprintf(stderr, "Error reading buffer message");
-            if(send_msg(&players[i], "REJECT") < 0) {
-                fprintf(stderr, "Error sending message %s to %d\n", "REJECT", id);
-            }
-            close(players[i].fd);
-            i--; //reduce number of players connected
-            continue;
-        }
-        else if(strcmp(buf, "INIT") != 0) {
-            if(send_msg(&players[i], "REJECT") < 0) {
-                fprintf(stderr, "Error sending message %s to %d\n", "REJECT", id);
-            }
-            close(players[i].fd);
-            i--; //reduce number of players connected
-            continue;
-        }
-        //"INIT" received
-        players[i].id = id;
-        if(send_welcome(&players[i]) < 0) {
-            fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", id);
-            close(players[i].fd); //terminate connection
-            i--; //reduce number of players connected
-            continue;
-        }
-        servers[0].num_players = id; //set number of players
-        continue;
-    }
-    return 0;
-    */
 }
 
 /**
