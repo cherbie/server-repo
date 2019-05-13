@@ -57,30 +57,5 @@ PLAYER * dequeue_last(QUEUE * q) {
     else
         return NULL; //empty
 }
-/*
-int main(int argc, char * argv[]) {
-    QUEUE queue;
-    queue.front = 0;
-    queue.count = 0;
-    queue.length = NUM_PLAYERS;
 
-    players = malloc(4 * sizeof(players));
-    players[0].id = 2;
-    players[1].id = 5;
-    players[2].id = 9;
-    players[3].id = 7;
 
-    enqueue(&queue, &players[0]);
-    printf("%d\n", dequeue_front(&queue)->id);
-    enqueue(&queue, &players[1]);
-    enqueue(&queue, &players[2]);
-    printf("%d\n", enqueue(&queue, &players[3]));
-    printf("%d\n", examine(&queue)->id);
-    printf("%d\n", dequeue_last(&queue)->id);
-    printf("%d\n", examine(&queue)->id);
-    printf("%d\n", enqueue(&queue, &players[3]));
-    while(examine(&queue) != NULL) {
-        printf("-%d\t", dequeue_last(&queue)->id);
-    }
-}
-*/

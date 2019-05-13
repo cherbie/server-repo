@@ -1,6 +1,8 @@
 SERVER = server.c server.h
-SERVER_O = server.o queue.o
+SERVER_O = server.o queue.o connection.o gamelobby.o
 QUEUE = queue.c server.h
+CONNECTION = connection.c server.h
+GAMELOBBY = gamelobby.c server.h
 CLIENT = game.c client.h
 CLIENT_O = game.o
 CC = cc -std=c99 -Wall -Werror -pedantic
@@ -13,6 +15,12 @@ server.o : $(SERVER)
 
 queue.o : $(QUEUE)
 	$(CC) -c $(QUEUE)
+
+connection.o : $(CONNECTION)
+	$(CC) -c $(CONNECTION)
+
+gamelobby.o : $(GAMELOBBY)
+	$(CC) -c $(GAMELOBBY)
 
 game : $(CLIENT_O)
 	$(CC) -o game $(CLIENT_O)
