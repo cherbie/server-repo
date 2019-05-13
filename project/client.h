@@ -29,3 +29,5 @@ int init_match(void);
 int send_msg(char *);
 int extract_start(char *);
 int receive_welcome(SERVER *, char *);
+void send_move(char *);
+void receive_move(void);

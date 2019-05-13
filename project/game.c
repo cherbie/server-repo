@@ -25,6 +25,11 @@ int main(int argc, char* argv[])
     }
     
     while(true) {
+        char *cp = calloc(MSG_SIZE, sizeof(char));
+        printf("TYPE YOUR MOVE:\n");
+        gets(cp);
+        send_move(cp);
+        receive_move();
         printf("WAITING FOR GAME.\n");
         gets(buf);
     }
@@ -187,3 +192,33 @@ int receive_welcome(SERVER * p, char * s) {
     return -1;
 }
 
+void send_move(char * str) {
+    buf = calloc(MSG_SIZE, sizeof(char));
+    sprintf(buf, "%d,%s", server.id, str);
+    if(send(server.fd, buf, sizeof(buf), 0) < 0) {
+        send(server.fd, buf, sizeof(buf), 0);
+    }
+    printf("SENT: %s\n", buf);
+    return;
+}
+
+void receive_move(void) {
+    buf = calloc(MSG_SIZE, sizeof(char));
+    recv(server.fd, buf, MSG_SIZE, 0);
+    printf("RECEIVED: %s\n", buf);
+
+    char delim[2] = ",";
+    char * tok = strtok(buf, delim);
+    while(tok != NULL) {
+        int id = atoi(tok);
+        if(id != server.id) {
+            fprintf(stderr, "MESSAGE RECEIVED IS NOT INTENDED FOR THIS CLIENT\n");
+            return;
+        } 
+        tok = strtok(NULL, delim);
+        if(strcmp(tok, "PASS") != 0) { //FAIL
+            server.lives -= 1;
+        }
+        return;
+    }
+}
