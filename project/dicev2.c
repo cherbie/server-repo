@@ -30,30 +30,7 @@ void play(PLAYER players[]){
     players[2].input = "3";
     
     for(int i = 0; i<3; i++){ //loop through number of players
-        if(players[i].lives != 0){
-        if(players[i].input[0] >= '1' && players[i].input[0] <= '6'){
-            int input = atoi(players[i].input);
-            if(input == dice1 || input == dice2){
-				//player passed
-                continue;
-            }
-             players[i].lives -=1;
-        }else{
-            if(strncmp(players[i].input, "even", 8)==0 && (dice1+dice2) %2 == 0 && dice1 != dice2){
-                //player passed
-				continue;
-            }
-            if(strncmp(players[i].input, "odd", 8)==0 && (dice1+dice2)%2 ==1 && (dice1+dice2)>5){
-                //player passed
-				continue;
-            }
-            if(strncmp(players[i].input, "doubles", 8)==0 && dice1==dice2){
-                //player passed
-				continue;
-            }
-			//player failed
-            players[i].lives -=1;
-        }
+
         }
     }
     for(int i = 0; i<3; i++){

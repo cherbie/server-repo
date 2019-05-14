@@ -37,23 +37,58 @@ void play_game_round( void ) {
         switch (err) {
             case 0 : { //success
                 printf("RECEIVED: %s / %d\n", p->move, p->id);
+                enqueue(&queue, p);
+                break;
             }
             case -1 : { //failure
-
+                printf("FAILED TO RECEIVE MOVE: %d\n", p->id);
+                enqueue(&queue, p);
+                break;
             }
             case -2 : { //timeout failure
-            
+                printf("TIMEOUT to receive move from: %d\n", p->id);
+                //what is player->move equal to?
+                enqueue(&queue, p);
+                break;
             }
             case -3 : { // CLIENT LEFT
-
+                printf("CLIENT: %d has left the game.\n", p->id);
+                //close player & set alive to false;
+                continue;
             }
+            default : continue;
         }
     }
+
+    //ROLL
     roll_dice(&servers[0]);
+
+    //OUTCOME
+    QUEUE dead_queue; //queue managing players that are not alive
     for(int i = 0; i < NUM_PLAYERS; i++) {
-        if(!players[i].alive) continue;
-        send_success(&players[i]); //handle comparison and sending
+        p = dequeue_front(&queue);
+        if(!p->alive) continue;
+        err = send_outcome(p); //handle comparison, lives and sending message
+        if(err < 0 && p->lives <= 0) { //failed and NO lives
+            enqueue(&dead_queue, p); //add player to
+            continue;
+        }
+        else { //failed
+            enqueue(&queue, p);
+            continue;
+        }
     }
+
+    //SEND STATUS
+    if(queue.count <= 0) { //no more players in game
+        //SEND VICTORY to all people in dead_queue;
+    }
+    else if(queue.count == 1) { //one winner.
+        //SEND VICTORY to people in queue
+        
+        //SEND ELIMINATION TO ALL PEOPLE IN dead_queue;
+    }
+    else return; //play next round
 }
 
 void set_player_lives(void) {
@@ -67,6 +102,7 @@ void set_player_lives(void) {
  * Wait for game player to send move. EVEN || ODD || DOUB || CON,%d
  * On player timeout, set player.alive status to FALSE
  * @return 0 to indicate success, -1 to indicate error
+ * @return -2 to indicate timeout
  * @return -3 to indicate proper client file descriptor shutdown
  */
 int receive_move(PLAYER * p) {
@@ -96,14 +132,13 @@ void roll_dice(SERVER * s) {
 
 /**
  * SEND to player if successful or failure. ATTEMPT at most twice to send notification
- * UPDATE player lives
  * @return 0 on succesful player notification, -1 otherwise.
  **/
-int send_success(PLAYER * p) {
+int send_outcome(PLAYER * p) {
     //ANALYSE MOVE & SEND PASS OR FAIL
     if(move_is_correct(p)) {
         if(send_pass(p) < 0)
-            return send_pass(p);
+            return send_pass(p); //if lost connection to player will send 0 (success) .. not good
     }
     if(send_fail(p) < 0) { //attempt to send "FAIL"
         p->lives -= 1; //reduce player lives
@@ -177,15 +212,41 @@ int parse_move(PLAYER * p, char * move) {
 
 /**
  * Dice value comparison logic.
+ * UPDATE player lives
  * @return true if correct, false otherwise.
 **/
 bool move_is_correct(PLAYER * p) {
+    //PLAYER MOVE IS in p->move & p->roll
+    //DICE roll is in servers[0].dice[0] & servers[0].dice[1]
+    int dice1 = servers[0].dice[0];
+    int dice2 = servers[0].dice[1];
+    if(p->lives > 0) {
+        if(strcmp(p->move, "CON") && p->roll >= 1 && p->roll <= 6) { //"CON,%d" player move
+            if(p->roll == dice1|| p->roll == dice2) { //player passed
+                return true; // do not change lives
+            }
+            else p->lives -= 1;
+            return false;
+        }
+        else if(strcmp(p->move, "EVEN") == 0 && (dice1+dice2)%2 == 0 && dice1 != dice2) { //player passed
+            return true;
+        }
+        else if(strcmp(p->move, "ODD") == 0 && (dice1+dice2)%2 == 1 && (dice1+dice2)>5) { //player passed
+            return true;
+        }
+        else if(strcmp(p->move, "DOUB") == 0 && dice1 == dice2) { //player passed
+            return true;
+        }
+        //player failed
+        p->lives -= 1;
+    }    
     return false;
 }
 
 /**
  * SEND "%d,PASS"
  * @return 0 to indicate success, -1 otherwise.
+ * @return -3 to indicate player has lost connection
  */
 int send_pass(PLAYER * p) {
     return -1;
@@ -194,6 +255,7 @@ int send_pass(PLAYER * p) {
 /**
  * SEND "%d,FAIL"
  * @return 0 to indicate success, -1 otherwise.
+ * @return -3 to indicate player has lost connection
  */
 int send_fail(PLAYER * p) {
     return -1;
