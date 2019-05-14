@@ -30,4 +30,4 @@ int send_msg(char *);
 int extract_start(char *);
 int receive_welcome(SERVER *, char *);
 void send_move(char *);
-void receive_move(void);
+void receive_result(void);

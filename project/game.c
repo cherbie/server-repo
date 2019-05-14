@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
         printf("TYPE YOUR MOVE (ODD, EVEN, DOUB, CON, int):\n");
         gets(cp);
         send_move(cp);
-        receive_move();
+        receive_result();
         printf("WAITING FOR GAME.\n");
         gets(buf);
     }
@@ -203,7 +203,7 @@ void send_move(char * str) {
     return;
 }
 
-void receive_move(void) {
+void receive_result(void) {
     buf = calloc(MSG_SIZE, sizeof(char));
     recv(server.fd, buf, MSG_SIZE, 0);
     printf("RECEIVED: %s\n", buf);

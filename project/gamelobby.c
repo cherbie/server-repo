@@ -20,41 +20,41 @@ int start_game(void) {
 
     //CYCLE THROUGH EACH PLAYER
     while(true) {
-        PLAYER * p;
-        int active_players = queue.count; //iterate through all players once.
-        printf("------------------\n");
-        for(int i = 0; i < active_players; i++) {
-            p = dequeue_front(&queue); //get player
-            err = receive_move(p);
-            switch (err) {
-                case 0 : { //success
-                    printf("RECEIVED: %s / %d\n", p->move, p->id);
-                }
-                case -1 : { //failure
-
-                }
-                case -2 : { //timeout failure
-
-                }
-            }
-        }
-        roll_dice(&servers[0]);
-        for(int i = 0; i < NUM_PLAYERS; i++) {
-            if(!players[i].alive) continue;
-            send_success(&players[i]); //handle comparison and sending
-        }
-
-        printf("Enter !~ characters to quit program.\n");
+        play_game_round();
+        printf("ENTER STRING TO CONTINUE.\n");
         buf = calloc(MSG_SIZE, sizeof(char));
         gets(buf);
-        if(strcmp(buf, "!~") == 0) {
-            free(buf);
-            free(players);
-            exit(EXIT_SUCCESS);
-        }
     }
 }
 
+void play_game_round( void ) {
+    PLAYER * p;
+    int active_players = queue.count; //iterate through all players once.
+    printf("------------------\n");
+    for(int i = 0; i < active_players; i++) {
+        p = dequeue_front(&queue); //get player
+        err = receive_move(p);
+        switch (err) {
+            case 0 : { //success
+                printf("RECEIVED: %s / %d\n", p->move, p->id);
+            }
+            case -1 : { //failure
+
+            }
+            case -2 : { //timeout failure
+            
+            }
+            case -3 : { // CLIENT LEFT
+
+            }
+        }
+    }
+    roll_dice(&servers[0]);
+    for(int i = 0; i < NUM_PLAYERS; i++) {
+        if(!players[i].alive) continue;
+        send_success(&players[i]); //handle comparison and sending
+    }
+}
 
 void set_player_lives(void) {
     for(int i = 0; i < servers[0].num_players; i++) {
@@ -67,15 +67,18 @@ void set_player_lives(void) {
  * Wait for game player to send move. EVEN || ODD || DOUB || CON,%d
  * On player timeout, set player.alive status to FALSE
  * @return 0 to indicate success, -1 to indicate error
+ * @return -3 to indicate proper client file descriptor shutdown
  */
 int receive_move(PLAYER * p) {
     char * cp = calloc(MSG_SIZE, sizeof(char));
     int suc = recv(p->fd, cp, MSG_SIZE, 0);
     if( suc < 0 ) //FAIL
         return -1;
+    else if( suc == 0) //proper client server exit
+        return -3;
 
     //RECIEVE MOVE
-    if(interpret_move(p, cp) < 0 ) { //FAIL
+    if(parse_move(p, cp) < 0 ) { //FAIL
         return -1;
     }
     return 0;
@@ -113,7 +116,7 @@ int send_success(PLAYER * p) {
  * BREAK CLIENTS PACKET INTO READABLE SEGMENTS
  * @return 0 to indicate successful interpretation, -1 to indicate error.
  */
-int interpret_move(PLAYER * p, char * move) {
+int parse_move(PLAYER * p, char * move) {
     char delim[2] = ",";
     char * tok = strtok(move, delim);
     int n = 0;

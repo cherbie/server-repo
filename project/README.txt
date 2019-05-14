@@ -21,3 +21,8 @@ PROJECT STATUS:
 15. send "VICT"
 16. send "LOSER"
 17. Create test environment and test many cases.
+
+CURRENTLY:
+ ---
+ attempting to interpret and send PASS / FAIL message to client.
+ need to handle enqueueing the client too.
