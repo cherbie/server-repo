@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
     
     while(true) {
         char *cp = calloc(MSG_SIZE, sizeof(char));
-        printf("TYPE YOUR MOVE (ODD, EVEN, DOUB, CONN, int):\n");
+        printf("TYPE YOUR MOVE (ODD, EVEN, DOUB, CON, int):\n");
         gets(cp);
         send_move(cp);
         receive_move();
