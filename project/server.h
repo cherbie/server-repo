@@ -63,12 +63,14 @@ int send_welcome(PLAYER *);
 int receive_move(PLAYER *);
 void roll_dice(SERVER *);
 int send_outcome(PLAYER *);
-int construct_queue(int);
+int construct_queue(QUEUE *, int);
 int parse_move(PLAYER *, char *);
 bool move_is_correct(PLAYER *);
 int send_pass(PLAYER *);
 int send_fail(PLAYER *);
-void play_game_round(void);
+int play_game_round(void);
+int send_vict(PLAYER *);
+int send_elim(PLAYER *);
 
 //QUEUE FUNCTION DECLARATIONS
 bool isFull(QUEUE *);

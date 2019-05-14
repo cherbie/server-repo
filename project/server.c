@@ -24,7 +24,7 @@ int main(int argc, char * argv[]) {
 
     port = atoi(argv[1]);
     set_server_socket(NUM_SERVERS); //EXIT_FAILURE UPON ERROR
-    if(construct_queue(NUM_PLAYERS) < 0) {
+    if(construct_queue(&queue, NUM_PLAYERS) < 0) {
         fprintf(stderr, "UNABLE TO ALLOCATE MEMORY TO STACK\n");
         exit(EXIT_FAILURE);
     }
@@ -45,7 +45,9 @@ int main(int argc, char * argv[]) {
     switch(fork()) {
         case 0 : { //child
             srand(time(NULL));
-            start_game();
+            if( start_game() == 0 ) exit(EXIT_SUCCESS);
+            else exit(EXIT_FAILURE);
+
         }
         case -1 : { //error forking
             perror("UNEXPECTED APPLICATION ERROR: FORKING_ERROR.\n");
@@ -53,6 +55,7 @@ int main(int argc, char * argv[]) {
         default : { //parent
             while(true)
                 reject_connections();
+            // exit with child exit status
         }
     }
 }
@@ -61,9 +64,9 @@ int main(int argc, char * argv[]) {
  * CONSTRUCTOR FOR QUEUE ADT
  * @return 0 to indicate success, -1 to indicate failure
  */
-int construct_queue(int num) {
-    queue.front = 0;
-    queue.count = 0;
-    queue.length = num;
+int construct_queue(QUEUE * q, int num) {
+    q->front = 0;
+    q->count = 0;
+    q->length = num;
     return 0;
 }

@@ -20,14 +20,19 @@ int start_game(void) {
 
     //CYCLE THROUGH EACH PLAYER
     while(true) {
-        play_game_round();
+        if(play_game_round() == 0) break;
         printf("ENTER STRING TO CONTINUE.\n");
         buf = calloc(MSG_SIZE, sizeof(char));
         gets(buf);
     }
+    return 0;
 }
 
-void play_game_round( void ) {
+/**
+ * @return 0 to indicate player victory and -1 to indicate outstanding players
+ *
+ */
+int play_game_round( void ) {
     PLAYER * p;
     int active_players = queue.count; //iterate through all players once.
     printf("------------------\n");
@@ -42,17 +47,20 @@ void play_game_round( void ) {
             }
             case -1 : { //failure
                 printf("FAILED TO RECEIVE MOVE: %d\n", p->id);
+                p->move = NULL; //player->move is equal to?
                 enqueue(&queue, p);
                 break;
             }
             case -2 : { //timeout failure
                 printf("TIMEOUT to receive move from: %d\n", p->id);
-                //what is player->move equal to?
+                p->move = NULL; //what is player->move equal to
                 enqueue(&queue, p);
                 break;
             }
             case -3 : { // CLIENT LEFT
                 printf("CLIENT: %d has left the game.\n", p->id);
+                p->alive = false;
+                close(p->fd);
                 //close player & set alive to false;
                 continue;
             }
@@ -65,30 +73,62 @@ void play_game_round( void ) {
 
     //OUTCOME
     QUEUE dead_queue; //queue managing players that are not alive
-    for(int i = 0; i < NUM_PLAYERS; i++) {
+    construct_queue(&dead_queue, NUM_PLAYERS);
+    active_players = queue.count;
+    for(int i = 0; i < active_players; i++) {
         p = dequeue_front(&queue);
         if(!p->alive) continue;
         err = send_outcome(p); //handle comparison, lives and sending message
-        if(err < 0 && p->lives <= 0) { //failed and NO lives
-            enqueue(&dead_queue, p); //add player to
+        if(err < 0) 
+            fprintf(stderr, "ERROR sending outcome to client: %d\n", p->id);
+        if(p->lives <= 0) { //failed and NO lives
+            p->alive = false; //set player to not alive
+            enqueue(&dead_queue, p); //add player to dead_queue
             continue;
         }
-        else { //failed
+        else //lives is > 0
             enqueue(&queue, p);
-            continue;
-        }
+        continue;
     }
 
     //SEND STATUS
-    if(queue.count <= 0) { //no more players in game
+    if(queue.count <= 0 && dead_queue.count > 0) { //no more players in game
         //SEND VICTORY to all people in dead_queue;
+        active_players = dead_queue.count;
+        for(int i = 0; i < active_players; i++) {
+            p = dequeue_front(&dead_queue);
+            send_vict(p);
+            continue;
+        }
+        return 0; //victory
     }
     else if(queue.count == 1) { //one winner.
         //SEND VICTORY to people in queue
-        
+        p = dequeue_front(&queue);
+        send_vict(p); //handle failure to send?
         //SEND ELIMINATION TO ALL PEOPLE IN dead_queue;
+        active_players = dead_queue.count;
+        for(int i = 0; i < active_players; i++) {
+            p = dequeue_front(&dead_queue);
+            send_elim(p); //handle failrue to send?
+            continue;
+        }
+        return 0; //victory
     }
-    else return; //play next round
+    else {
+        //DEAD_QUEUE
+        active_players = dead_queue.count;
+        if(active_players > 0) {
+            for(int i = 0; i < active_players; i++) {
+                p = dequeue_front(&dead_queue);
+                send_elim(p); //handle failure to send?
+                continue;
+            }
+        }
+    }
+    //play next round
+    printf("PLAY NEXT ROUND\n");
+    return -1;
 }
 
 void set_player_lives(void) {
@@ -112,7 +152,7 @@ int receive_move(PLAYER * p) {
         return -1;
     else if( suc == 0) //proper client server exit
         return -3;
-
+    
     //RECIEVE MOVE
     if(parse_move(p, cp) < 0 ) { //FAIL
         return -1;
@@ -128,6 +168,7 @@ void roll_dice(SERVER * s) {
     for(int i = 0; i < NUM_DICE; i++)
         s->dice[i] = (rand()%6 + 1);
     printf("dice1:\t%d\tdice2:\t%d\n", s->dice[0], s->dice[1]);
+    return;
 }
 
 /**
@@ -136,15 +177,10 @@ void roll_dice(SERVER * s) {
  **/
 int send_outcome(PLAYER * p) {
     //ANALYSE MOVE & SEND PASS OR FAIL
-    if(move_is_correct(p)) {
-        if(send_pass(p) < 0)
-            return send_pass(p); //if lost connection to player will send 0 (success) .. not good
-    }
-    if(send_fail(p) < 0) { //attempt to send "FAIL"
-        p->lives -= 1; //reduce player lives
-        return send_fail(p);
-    }
-    return 0; //indicate success
+    if(move_is_correct(p))
+        return send_pass(p); //if lost connection to player will send 0 (success) .. not goog
+    else 
+        return send_fail(p); //attempt to send "FAIL"
 }
 
 /**
@@ -237,8 +273,7 @@ bool move_is_correct(PLAYER * p) {
         else if(strcmp(p->move, "DOUB") == 0 && dice1 == dice2) { //player passed
             return true;
         }
-        //player failed
-        p->lives -= 1;
+        p->lives -= 1; //player failed
     }    
     return false;
 }
@@ -246,17 +281,60 @@ bool move_is_correct(PLAYER * p) {
 /**
  * SEND "%d,PASS"
  * @return 0 to indicate success, -1 otherwise.
- * @return -3 to indicate player has lost connection
  */
 int send_pass(PLAYER * p) {
-    return -1;
+    buf = calloc(MSG_SIZE, sizeof(char));
+    sprintf(buf, "%d,%s", p->id, "PASS");
+    err = send(p->fd, buf, strlen(buf), 0);
+    printf("%s\n", buf);
+    if(err < 0)
+        return -1;
+    else 
+        return 0;
 }
 
 /**
  * SEND "%d,FAIL"
  * @return 0 to indicate success, -1 otherwise.
- * @return -3 to indicate player has lost connection
  */
 int send_fail(PLAYER * p) {
-    return -1;
+    buf = calloc(MSG_SIZE, sizeof(char));
+    sprintf(buf, "%d,%s", p->id, "FAIL");
+    err = send(p->fd, buf, strlen(buf), 0);
+    printf("%s\n", buf);
+    if(err < 0)
+        return -1;
+    else 
+        return 0;
 }
+
+/**
+ * SEND "%d,VICT"
+ * @return 0 to indicate success and -1 otherwise
+ */
+int send_vict(PLAYER * p) {
+    buf = calloc(MSG_SIZE, sizeof(char));
+    sprintf(buf, "%d,%s", p->id, "VICT");
+    err = send(p->fd, buf, strlen(buf), 0);
+    printf("%s\n", buf);
+    if(err < 0)
+        return -1;
+    else 
+        return 0;
+}
+
+/**
+ * SEND "%d,ELIM"
+ * @return 0 to indicate success and -1 otherwise
+ */
+int send_elim(PLAYER * p) {
+    buf = calloc(MSG_SIZE, sizeof(char));
+    sprintf(buf, "%d,%s", p->id, "ELIM");
+    err = send(p->fd, buf, strlen(buf), 0);
+    printf("%s\n", buf);
+    if(err < 0)
+        return -1;
+    else 
+        return 0;
+}
+
