@@ -3,4 +3,7 @@
 socket=900
 #EXECUTION
 clear
-./server $socket
+xterm -e ./server $socket &
+xterm -e ./game $socket &
+xterm -e ./game $socket &
+xterm -e ./game $socket &

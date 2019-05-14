@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
     
     while(true) {
         char *cp = calloc(MSG_SIZE, sizeof(char));
-        printf("TYPE YOUR MOVE:\n");
+        printf("TYPE YOUR MOVE (ODD, EVEN, DOUB, CONN, int):\n");
         gets(cp);
         send_move(cp);
         receive_move();
@@ -147,6 +147,7 @@ int init_match(void) {
         fprintf(stderr, "Game entry rejected.\n");
         return -1;
     }
+
     //RECEIVE WELCOME
     if(receive_welcome(&server, buf) == 0)
         printf("%s\n", buf);
@@ -194,9 +195,9 @@ int receive_welcome(SERVER * p, char * s) {
 
 void send_move(char * str) {
     buf = calloc(MSG_SIZE, sizeof(char));
-    sprintf(buf, "%d,%s", server.id, str);
-    if(send(server.fd, buf, sizeof(buf), 0) < 0) {
-        send(server.fd, buf, sizeof(buf), 0);
+    sprintf(buf, "%d,%s,%s", server.id, "MOV", str);
+    if(send(server.fd, buf, strlen(buf), 0) < 0) {
+        send(server.fd, buf, strlen(buf), 0);
     }
     printf("SENT: %s\n", buf);
     return;
@@ -219,6 +220,8 @@ void receive_move(void) {
         if(strcmp(tok, "PASS") != 0) { //FAIL
             server.lives -= 1;
         }
+        //PASS
+        // do nothing to player lives
         return;
     }
 }
