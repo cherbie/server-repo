@@ -234,6 +234,10 @@ int parse_move(PLAYER * p, char * move) {
                     tok = strtok(NULL, delim);
                     continue;
                 }
+                else {
+                    p->move = NULL;
+                    return -1;
+                }
             }
             case 3 : { //%d
                 p->roll = atoi(tok);
