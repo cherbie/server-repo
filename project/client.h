@@ -6,6 +6,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/select.h>
 
 #define BUFFER_SIZE 1024
 #define MSG_SIZE 1000
@@ -22,6 +24,9 @@ char * buf;
 int port; //global variable
 int err, opt_val;
 SERVER server;
+
+struct fd_set rtfds;
+struct timeval tv;
 
 //FUNCITON DECLARATIONS
 void connect_to_server(void);

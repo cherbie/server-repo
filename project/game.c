@@ -23,13 +23,17 @@ int main(int argc, char* argv[])
         close(server.fd);
         exit(EXIT_FAILURE);
     }
-    
+
+    fcntl(server.fd, O_NONBLOCK);
+
     while(true) {
         char *cp = calloc(MSG_SIZE, sizeof(char));
         printf("TYPE YOUR MOVE (ODD, EVEN, DOUB, CON, int):\n");
         gets(cp);
         send_move(cp);
         receive_result();
+        receive_result();
+
         printf("WAITING FOR GAME.\n");
         gets(buf);
     }
@@ -60,7 +64,7 @@ int send_msg(char * s) {
 void connect_to_server(void) {
     server.fd = socket(AF_INET, SOCK_STREAM, 0); //create an endpoint for communication
 
-    if (server.fd < 0){
+    if (server.fd < 0) {
         fprintf(stderr,"Could not create socket\n");
         exit(EXIT_FAILURE);
     }
@@ -70,6 +74,7 @@ void connect_to_server(void) {
     server.addr.sin_addr.s_addr = htonl(INADDR_ANY); //converts the unsigned integer hostlong from host byte order to network byte order.
 
     opt_val = 1;
+
     setsockopt(server.fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof opt_val);
 
     err = connect(server.fd, (struct sockaddr *) &server.addr, sizeof(server.addr));
@@ -196,6 +201,7 @@ int receive_welcome(SERVER * p, char * s) {
 void send_move(char * str) {
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s,%s", server.id, "MOV", str);
+    
     if(send(server.fd, buf, strlen(buf), 0) < 0) {
         send(server.fd, buf, strlen(buf), 0);
     }
@@ -204,24 +210,55 @@ void send_move(char * str) {
 }
 
 void receive_result(void) {
-    buf = calloc(MSG_SIZE, sizeof(char));
-    recv(server.fd, buf, MSG_SIZE, 0);
-    printf("RECEIVED: %s\n", buf);
+    FD_ZERO(&rtfds);
+    FD_SET(server.fd, &rtfds);
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
 
-    char delim[2] = ",";
-    char * tok = strtok(buf, delim);
-    while(tok != NULL) {
-        int id = atoi(tok);
-        if(id != server.id) {
-            fprintf(stderr, "MESSAGE RECEIVED IS NOT INTENDED FOR THIS CLIENT\n");
-            return;
-        } 
-        tok = strtok(NULL, delim);
-        if(strcmp(tok, "PASS") != 0) { //FAIL
-            server.lives -= 1;
-        }
-        //PASS
-        // do nothing to player lives
+    int retval = select(server.fd+1, &rtfds, NULL, NULL, &tv);
+    fprintf(stderr, "RETURN VALUE:\t%d\n", retval);
+    if(retval < 0) {
+        fprintf(stderr, "select: error with file descriptor");
+        close(server.fd);
+        exit(EXIT_FAILURE);
+    }
+    else if( retval == 0 ) {
+        fprintf(stderr, "select: could not read from fd.");
+        gets(buf);
         return;
+        //exit(EXIT_FAILURE);
+    }
+    else {
+        buf = calloc(MSG_SIZE, sizeof(char));
+        recv(server.fd, buf, MSG_SIZE, 0);
+        printf("RECEIVED: %s\n", buf);
+
+        char delim[2] = ",";
+        char * tok = strtok(buf, delim);
+        while(tok != NULL) {
+            int id = atoi(tok);
+            if(id != server.id) {
+                fprintf(stderr, "MESSAGE RECEIVED IS NOT INTENDED FOR THIS CLIENT\n");
+                return;
+            } 
+            tok = strtok(NULL, delim);
+            if(strcmp(tok, "PASS") == 0) { //PASS
+                return;
+            }
+            else if(strcmp(tok, "FAIL") == 0){ //FAIL
+                server.lives -= 1;
+                return;
+            }
+            else if(strcmp(tok, "ELIM") == 0) { //ELIM
+                close(server.fd);
+                printf("END OF GAME!\n");
+                exit(EXIT_SUCCESS);
+            }
+            else if(strcmp(tok, "VICT") == 0) { //VICT
+                close(server.fd);
+                printf("END OF GAME!\n");
+                exit(EXIT_SUCCESS);
+            }
+        }
     }
 }
