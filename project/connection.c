@@ -16,6 +16,9 @@ int listenForInit(int x) {
     while(!isFull(&queue)) {
         n = queue.count; //player id being added
         players = realloc( players, (n+1) * sizeof(PLAYER)); //add another player
+
+        //select() inorder to check if incoming connections are present
+
         conn_players(&players[n]); //connect client socket
         enqueue(&queue, &players[n]);
         buf = calloc(MSG_SIZE, sizeof(char));

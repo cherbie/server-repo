@@ -35,4 +35,7 @@ CURRENTLY:
     - need to implement timer interrupts (pthread)
     - need to decide whether to close all connections after a victor has been announced
     - need to track client connection status throughout the programming by checking all recv calls
-    - 
+    - Need to implement select() to find if a connection attempt is attempting to be made
+    - kill when send() function fails.
+    - implement sleep(10) to wait for all clients to send their message ... and then quickly cycle through all players
+    
