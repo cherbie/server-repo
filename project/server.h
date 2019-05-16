@@ -7,6 +7,8 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <time.h>
+#include <fcntl.h>
+#include <sys/select.h>
 
 #define BUFFER_SIZE 1024
 #define MSG_SIZE 14 //bytes
@@ -23,7 +25,7 @@ typedef struct {
     int id;
     int lives;
     char * move;
-    int roll;
+    int roll; //store %d value in "CON,%d" packet
     bool alive;
 } PLAYER;
 
@@ -49,6 +51,11 @@ QUEUE queue;
 int err, opt_val; //temporary variables
 char *buf; //socket input and output stream buffer
 
+struct fd_set active_fds;
+struct fd_set rfds;
+struct fd_set wfds;
+struct timeval tv;
+
 //FUNCTION DECLARATIONS
 void conn_players(PLAYER *);
 int start_game(void);
@@ -71,6 +78,7 @@ int send_fail(PLAYER *);
 int play_game_round(void);
 int send_vict(PLAYER *);
 int send_elim(PLAYER *);
+int receive_init(QUEUE *);
 
 //QUEUE FUNCTION DECLARATIONS
 bool isFull(QUEUE *);

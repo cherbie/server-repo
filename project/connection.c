@@ -12,50 +12,102 @@
  * Deny game entry with "REJECT".
  */
 int listenForInit(int x) {
+    sleep(10);
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
     int n = -1;
-    while(!isFull(&queue)) {
+    for(int i = 0; i < servers[0].num_players; i++) {
         n = queue.count; //player id being added
         players = realloc( players, (n+1) * sizeof(PLAYER)); //add another player
 
-        //select() inorder to check if incoming connections are present
+        FD_ZERO(&rfds);
+        FD_SET(servers[0].fd, &rfds); 
 
-        conn_players(&players[n]); //connect client socket
-        enqueue(&queue, &players[n]);
-        buf = calloc(MSG_SIZE, sizeof(char));
-        err = recv(players[n].fd, buf, MSG_SIZE, 0);
-
-        printf("\tPlayer %i sent %s\n", n+1, buf);
-        if(err < 0) {
-            fprintf(stderr, "Error reading buffer message");
-            if(send_msg(&players[n], "REJECT") < 0) {
-                fprintf(stderr, "Error sending message %s to %d\n", "REJECT", n+1);
-            }
-            close(players[n].fd);
-            dequeue_last(&queue); //reduce number of players connected
-            continue;
+        int retval = select(servers[0].fd+1, &rfds, NULL, NULL, &tv);
+        if( retval < 0 ) {
+            perror("select() error.\n");
+            gets(buf);
+            return -1;
         }
-        else if(strcmp(buf, "INIT") != 0) {
-            if(send_msg(&players[n], "REJECT") < 0) {
-                fprintf(stderr, "Error sending message %s to %d\n", "REJECT", n+1);
-            }
-            close(players[n].fd);
-            dequeue_last(&queue); //reduce number of players connected
-            continue;
+        else if(retval == 0) {
+            fprintf(stderr, "NO CLIENTS ATTEMPTING TO CONNECT.\n");
+            gets(buf);
+            return -1;
         }
-        //"INIT" received
-        players[n].id = queue.count;
-        if(send_welcome(&players[n]) < 0) {
-            fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", players[n].id);
-            close(players[n].fd); //terminate connection
-            dequeue_last(&queue); //reduce number of players connected
-            continue;
+        else {
+            conn_players(&players[n]); //connect client socket
+            enqueue(&queue, &players[n]);
         }
-        servers[0].num_players = queue.count; //set number of players
-        continue;
     }
+    if(!isFull(&queue)) return -2;
+
+    err = receive_init(&queue);
+            
     return 0;
 }
 
+int receive_init(QUEUE * q) {
+    PLAYER * p;
+    int s = size(q); //number of players
+    while(s > 0) { //cycle through each player
+        s--;
+        p = dequeue_front(q);
+        
+        tv.tv_sec = 5;
+        tv.tv_usec = 0;
+
+        FD_ZERO(&rfds);
+        FD_SET(p->fd, &rfds); 
+
+        int retval = select(p->fd+1, &rfds, NULL, NULL, &tv);
+        if( retval < 0 ) {
+            perror("select() error.\n");
+            gets(buf);
+            return -1;
+        }
+        else if(retval == 0) {
+            fprintf(stderr, "NO CLIENTS ATTEMPTING TO CONNECT.\n");
+            gets(buf);
+            return -1;
+        }
+        else {
+            buf = calloc(MSG_SIZE, sizeof(char));
+            err = recv(p->fd, buf, MSG_SIZE, 0);
+
+            printf("\tPlayer %i sent %s\n", p->id, buf);
+            if(err < 0) {
+                fprintf(stderr, "Error reading buffer message");
+                if(send_msg(p, "REJECT") < 0) {
+                    fprintf(stderr, "Error sending message %s to %d\n", "REJECT", p->id);
+                }
+                close(p->fd);
+                //dequeue_last(&queue); //reduce number of players connected
+                continue;
+            }
+            else if(strcmp(buf, "INIT") != 0) {
+                if(send_msg(p, "REJECT") < 0) {
+                    fprintf(stderr, "Error sending message %s to %d\n", "REJECT", p->id);
+                }
+                close(p->fd);
+                //dequeue_last(&queue); //reduce number of players connected
+                continue;
+            }
+            //"INIT" received
+            p->id = queue.count;
+            if(send_welcome(p) < 0) {
+                fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", p->id);
+                close(p->fd); //terminate connection
+                //dequeue_last(&queue); //reduce number of players connected
+                continue;
+            }
+            enqueue(q, p);
+            continue;
+        }
+    }
+    servers[0].num_players = queue.count; //set number of players
+    return 0;
+
+}
 /**
  * Send welcome message to client.
  * @return 0 to indicate success, -1 to indicate error
@@ -78,9 +130,10 @@ int send_msg(PLAYER* p, const char* s) {
     return err;
 }
 
-void conn_players(PLAYER *player) {
-    socklen_t addr_len = sizeof(player->addr);
-    player->fd = accept(servers[0].fd, (struct sockaddr *) &player->addr, &addr_len);
+void conn_players(PLAYER *p) {
+    socklen_t addr_len = sizeof(p->addr);
+    p->fd = accept(servers[0].fd, (struct sockaddr *) &p->addr, &addr_len);
+    fcntl(p->fd, F_SETFL, O_NONBLOCK); //SET TO NON-BLOCKING
 }
 
 /**
@@ -104,6 +157,8 @@ void set_server_socket(int n) {
 
         opt_val = 1;
 
+        fcntl(servers[n].fd, F_SETFL, O_NONBLOCK); //SET AS NON_BLOCKING
+
         setsockopt(servers[i].fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof opt_val); //set socket
 
         err = bind(servers[i].fd, (struct sockaddr *) &servers[i].addr, sizeof(servers[i].addr)); //bind name to socket
@@ -112,10 +167,12 @@ void set_server_socket(int n) {
             exit(EXIT_FAILURE);
         }
 
+        servers[i].num_players = NUM_PLAYERS;
+
         //LISTEN FOR CONNECTIONS ON THE SOCKET
         err = listen(servers[i].fd, 128);
         if (err < 0){
-            fprintf(stderr,"Could not listen on socket\n");
+            perror("Could not listen on socket\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -124,6 +181,7 @@ void set_server_socket(int n) {
 void reject_connections(void) {
     struct sockaddr_in client;
     socklen_t addr_len = sizeof(client);
+    //BLOCKING OPERATION
     int client_fd = accept(servers[0].fd, (struct sockaddr *) &client, &addr_len);
     if(client_fd < 0) {
         fprintf(stderr, "Error accepting expired connection.");
