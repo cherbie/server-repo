@@ -261,7 +261,11 @@ bool move_is_correct(PLAYER * p) {
     int dice1 = servers[0].dice[0];
     int dice2 = servers[0].dice[1];
     if(p->lives > 0) {
-        if(strcmp(p->move, "CON") && p->roll >= 1 && p->roll <= 6) { //"CON,%d" player move
+        if( p->move == NULL) {
+            p->lives -= 1;
+            return false;
+        }
+        else if(strcmp(p->move, "CON") && p->roll >= 1 && p->roll <= 6) { //"CON,%d" player move
             if(p->roll == dice1|| p->roll == dice2) { //player passed
                 return true; // do not change lives
             }

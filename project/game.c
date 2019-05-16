@@ -20,21 +20,22 @@ int main(int argc, char* argv[])
 
     //INITIALISE MATCH
     if( init_match() < 0 ) {
-        close(server.fd);
+        close(player.fd);
         exit(EXIT_FAILURE);
     }
 
-    fcntl(server.fd, O_NONBLOCK);
+    fcntl(player.fd, O_NONBLOCK);
 
     while(true) {
         char *cp = calloc(MSG_SIZE, sizeof(char));
+        printf("----------------------------------------------\n");
         printf("TYPE YOUR MOVE (ODD, EVEN, DOUB, CON, int):\n");
         gets(cp);
         send_move(cp);
         receive_result();
-        receive_result();
+        receive_status();
 
-        printf("WAITING FOR GAME.\n");
+        printf("PRESS ENTER TO CONTINUE\n");
         gets(buf);
     }
 }
@@ -50,8 +51,8 @@ int send_msg(char * s) {
         return -1;
     }
     sprintf(buf, "%s", s);
-    if( send(server.fd, buf, strlen(buf), 0) < 0 ) {
-        fprintf(stderr, "Error sending %s to server.", s);
+    if( send(player.fd, buf, strlen(buf), 0) < 0 ) {
+        fprintf(stderr, "Error sending %s to player.", s);
         return -1;
     }
     return 0;
@@ -62,22 +63,22 @@ int send_msg(char * s) {
  *
  */
 void connect_to_server(void) {
-    server.fd = socket(AF_INET, SOCK_STREAM, 0); //create an endpoint for communication
+    player.fd = socket(AF_INET, SOCK_STREAM, 0); //create an endpoint for communication
 
-    if (server.fd < 0) {
+    if (player.fd < 0) {
         fprintf(stderr,"Could not create socket\n");
         exit(EXIT_FAILURE);
     }
 
-    server.addr.sin_family = AF_INET;
-    server.addr.sin_port = htons(port); //converts the unsigned short integer hostshort from host byte order to network byte order.
-    server.addr.sin_addr.s_addr = htonl(INADDR_ANY); //converts the unsigned integer hostlong from host byte order to network byte order.
+    player.addr.sin_family = AF_INET;
+    player.addr.sin_port = htons(port); //converts the unsigned short integer hostshort from host byte order to network byte order.
+    player.addr.sin_addr.s_addr = htonl(INADDR_ANY); //converts the unsigned integer hostlong from host byte order to network byte order.
 
     opt_val = 1;
 
-    setsockopt(server.fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof opt_val);
+    setsockopt(player.fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof opt_val);
 
-    err = connect(server.fd, (struct sockaddr *) &server.addr, sizeof(server.addr));
+    err = connect(player.fd, (struct sockaddr *) &player.addr, sizeof(player.addr));
     if(err < 0) {
         fprintf(stderr, "Could not connect to server.\n");
         exit(EXIT_FAILURE);
@@ -86,8 +87,8 @@ void connect_to_server(void) {
 
 /**
  * Tokenises char * paramater and sets
- * sets: server.lives
- * sets: server.players
+ * sets: player.lives
+ * sets: player.players
  * @return 0 to indicate success, or -1 to indicate stop game involvement.
  */
 int extract_start(char * s) {
@@ -110,14 +111,14 @@ int extract_start(char * s) {
                 break;
             }
             case 1 : { //number of players
-                server.players = atoi(tok);
+                player.players = atoi(tok);
                 n++;
                 tok = strtok(NULL, delim);
                 printf("num_players = %s\n", tok); //null
                 break;
             }
             case 2 : { //number of lives
-                server.lives = atoi(tok);
+                player.lives = atoi(tok);
                 n++;
                 tok = strtok(NULL, delim);
                 break;
@@ -136,14 +137,14 @@ int extract_start(char * s) {
 int init_match(void) {
     connect_to_server();
 
-    printf("Connected to server on port: %d\n\tclient:\t%d\n", port, server.fd);
+    printf("Connected to server on port: %d\n\tclient:\t%d\n", port, player.fd);
 
     if( send_msg("INIT") < 0 ) {
         return -1;
     }
 
     buf = calloc(MSG_SIZE, sizeof(char));
-    if( recv(server.fd, buf, MSG_SIZE, 0) < 0) {
+    if( recv(player.fd, buf, MSG_SIZE, 0) < 0) {
         fprintf(stderr, "Error receiving reply to %s message sent.\n", "INIT");
     }
 
@@ -154,7 +155,7 @@ int init_match(void) {
     }
 
     //RECEIVE WELCOME
-    if(receive_welcome(&server, buf) == 0)
+    if(receive_welcome(&player, buf) == 0)
         printf("%s\n", buf);
     else {
         fprintf(stderr, "Garbage message received.\n\tmessage: %s\n", buf);
@@ -163,7 +164,7 @@ int init_match(void) {
 
     //RECEIVE START
     buf = calloc(MSG_SIZE, sizeof(char));
-    err = recv(server.fd, buf, MSG_SIZE, 0);
+    err = recv(player.fd, buf, MSG_SIZE, 0);
     if( err < 0) 
         fprintf(stderr, "Error receiving %s message sent.\n", "START");
     printf("RECEIVED: %s\n", buf);
@@ -199,46 +200,64 @@ int receive_welcome(SERVER * p, char * s) {
 }
 
 void send_move(char * str) {
-    buf = calloc(MSG_SIZE, sizeof(char));
-    sprintf(buf, "%d,%s,%s", server.id, "MOV", str);
-    
-    if(send(server.fd, buf, strlen(buf), 0) < 0) {
-        send(server.fd, buf, strlen(buf), 0);
-    }
-    printf("SENT: %s\n", buf);
-    return;
-}
-
-void receive_result(void) {
-    FD_ZERO(&rtfds);
-    FD_SET(server.fd, &rtfds);
+    FD_ZERO(&active_fds);
+    FD_SET(player.fd, &active_fds);
     tv.tv_sec = 5;
     tv.tv_usec = 0;
 
-    int retval = select(server.fd+1, &rtfds, NULL, NULL, &tv);
+    int retval = select(player.fd+1, NULL, &active_fds, NULL, NULL);
     fprintf(stderr, "RETURN VALUE:\t%d\n", retval);
     if(retval < 0) {
         fprintf(stderr, "select: error with file descriptor");
-        close(server.fd);
+        close(player.fd);
         exit(EXIT_FAILURE);
     }
     else if( retval == 0 ) {
-        fprintf(stderr, "select: could not read from fd.");
-        gets(buf);
+        fprintf(stderr, "select: could not write to fd.");
         return;
         //exit(EXIT_FAILURE);
     }
     else {
         buf = calloc(MSG_SIZE, sizeof(char));
-        recv(server.fd, buf, MSG_SIZE, 0);
+        sprintf(buf, "%d,%s,%s", player.id, "MOV", str);
+
+        if(send(player.fd, buf, strlen(buf), 0) < 0) {
+            perror("send_move\n");
+            return;
+        }
+        printf("SENT: %s\n", buf);
+        return;
+    }
+}
+
+void receive_result(void) {
+    FD_ZERO(&active_fds);
+    FD_SET(player.fd, &active_fds);
+
+    int retval = select(player.fd+1, &active_fds, NULL, NULL, NULL); //BLOCKING
+
+    fprintf(stderr, "RETURN VALUE:\t%d\n", retval);
+    if(retval < 0) {
+        fprintf(stderr, "select: error with file descriptor");
+        close(player.fd);
+        exit(EXIT_FAILURE);
+    }
+    else if( retval == 0 ) {
+        fprintf(stderr, "select: could not read from fd.");
+        return;
+        //exit(EXIT_FAILURE);
+    }
+    else {
+        buf = calloc(MSG_SIZE, sizeof(char));
+        recv(player.fd, buf, MSG_SIZE, 0);
         printf("RECEIVED: %s\n", buf);
 
         char delim[2] = ",";
         char * tok = strtok(buf, delim);
         while(tok != NULL) {
             int id = atoi(tok);
-            if(id != server.id) {
-                fprintf(stderr, "MESSAGE RECEIVED IS NOT INTENDED FOR THIS CLIENT\n");
+            if(id != player.id) {
+                perror("MESSAGE RECEIVED IS NOT INTENDED FOR THIS CLIENT\n");
                 return;
             } 
             tok = strtok(NULL, delim);
@@ -246,19 +265,60 @@ void receive_result(void) {
                 return;
             }
             else if(strcmp(tok, "FAIL") == 0){ //FAIL
-                server.lives -= 1;
+                player.lives -= 1;
                 return;
             }
-            else if(strcmp(tok, "ELIM") == 0) { //ELIM
-                close(server.fd);
+            else {
+                fprintf(stderr, "RECEIVED ODD PACKET!\n");
+                return;
+            }
+        }
+    }
+}
+
+void receive_status(void) {
+    FD_ZERO(&active_fds);
+    FD_SET(player.fd, &active_fds);
+    tv.tv_sec = 2;
+    tv.tv_usec = 0;
+
+    int retval = select(player.fd+1, &active_fds, NULL, NULL, &tv);
+    fprintf(stderr, "RETURN VALUE:\t%d\n", retval);
+    if(retval < 0) {
+        fprintf(stderr, "select: error with file descriptor");
+        close(player.fd);
+        exit(EXIT_FAILURE);
+    }
+    else if( retval == 0 ) {
+        fprintf(stderr, "select: could not read from fd.");
+        return;
+    }
+
+    else {
+        buf = calloc(MSG_SIZE, sizeof(char));
+        recv(player.fd, buf, MSG_SIZE, 0);
+        printf("RECEIVED: %s\n", buf);
+
+        char delim[2] = ",";
+        char * tok = strtok(buf, delim);
+        while(tok != NULL) {
+            int id = atoi(tok);
+            if(id != player.id) {
+                perror("MESSAGE RECEIVED IS NOT INTENDED FOR THIS CLIENT\n");
+                return;
+            } 
+            tok = strtok(NULL, delim);
+            if(strcmp(tok, "ELIM") == 0) { //ELIM
+                close(player.fd);
                 printf("END OF GAME!\n");
                 exit(EXIT_SUCCESS);
             }
             else if(strcmp(tok, "VICT") == 0) { //VICT
-                close(server.fd);
+                close(player.fd);
                 printf("END OF GAME!\n");
                 exit(EXIT_SUCCESS);
             }
         }
     }
 }
+
