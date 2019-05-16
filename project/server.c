@@ -23,13 +23,17 @@ int main(int argc, char * argv[]) {
     }
 
     port = atoi(argv[1]);
+
     set_server_socket(NUM_SERVERS); //EXIT_FAILURE UPON ERROR
+
+    //CONSTRUCT QUEUE LATER?
     if(construct_queue(&queue, NUM_PLAYERS) < 0) {
         fprintf(stderr, "UNABLE TO ALLOCATE MEMORY TO STACK\n");
         exit(EXIT_FAILURE);
     }
     
     printf("Server is listening on %d\n", port);
+    
     err = listenForInit(NUM_PLAYERS); //manages the introduction of players to the game
     if(err == -2) { //timeout for players joining the game
         fprintf(stderr, "Game timeout due to lack of players joining.\n");

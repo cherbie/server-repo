@@ -45,10 +45,10 @@ typedef struct {
 
 //GLOBAL VARIABLES
 int port;
-SERVER * servers; //socket integer descriptors
+SERVER server; //socket integer descriptors
 PLAYER * players; //define players
 QUEUE queue;
-int err, opt_val; //temporary variables
+int rec_err, send_err, conn_err, err, opt_val; //temporary variables
 char *buf; //socket input and output stream buffer
 
 struct fd_set active_fds;
@@ -57,7 +57,6 @@ struct fd_set wfds;
 struct timeval tv;
 
 //FUNCTION DECLARATIONS
-void conn_players(PLAYER *);
 int start_game(void);
 void set_server_socket(int);
 int listenForInit(int);
@@ -78,7 +77,7 @@ int send_fail(PLAYER *);
 int play_game_round(void);
 int send_vict(PLAYER *);
 int send_elim(PLAYER *);
-int receive_init(QUEUE *);
+int receive_init(QUEUE *, PLAYER *, int);
 
 //QUEUE FUNCTION DECLARATIONS
 bool isFull(QUEUE *);

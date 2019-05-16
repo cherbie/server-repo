@@ -6,10 +6,10 @@
  */
 int start_game(void) {
     printf("GAME PLAYERS\n");
-    for(int i = 0; i < servers[0].num_players; i++)
+    for(int i = 0; i < server.num_players; i++)
         printf("\t%d\n", players[i].id);
 
-    if(servers[0].num_players == NUM_PLAYERS) { //ENOUGH PLAYERS IN THE GAME
+    if(server.num_players == NUM_PLAYERS) { //ENOUGH PLAYERS IN THE GAME
         set_player_lives(); //set players initial lives
         send_start(); //send "START, %d, %d" packet
     }
@@ -69,7 +69,7 @@ int play_game_round( void ) {
     }
 
     //ROLL
-    roll_dice(&servers[0]);
+    roll_dice(&server);
 
     //OUTCOME
     QUEUE dead_queue; //queue managing players that are not alive
@@ -132,7 +132,7 @@ int play_game_round( void ) {
 }
 
 void set_player_lives(void) {
-    for(int i = 0; i < servers[0].num_players; i++) {
+    for(int i = 0; i < server.num_players; i++) {
         players[i].lives = NUM_LIVES;
         players[i].alive = true;
     }
@@ -257,9 +257,9 @@ int parse_move(PLAYER * p, char * move) {
 **/
 bool move_is_correct(PLAYER * p) {
     //PLAYER MOVE IS in p->move & p->roll
-    //DICE roll is in servers[0].dice[0] & servers[0].dice[1]
-    int dice1 = servers[0].dice[0];
-    int dice2 = servers[0].dice[1];
+    //DICE roll is in server.dice[0] & server.dice[1]
+    int dice1 = server.dice[0];
+    int dice2 = server.dice[1];
     if(p->lives > 0) {
         if( p->move == NULL) {
             p->lives -= 1;
