@@ -34,7 +34,7 @@ int listenForInit(int x) {
         return -1;
     }
     else {
-        FD_ZERO(&active_fds);
+        //FD_ZERO(&active_fds); NOT NEEDED AS THIS IS HANDLED AT THE START OF THE GAME
         players = malloc( NUM_PLAYERS * sizeof(PLAYER)); //allocate for all players
         int tempfd = 0;
         int i = 0;
@@ -53,7 +53,7 @@ int listenForInit(int x) {
                 continue;
             }
 
-            FD_SET(players[i].fd, &active_fds); //add to working set
+            //FD_SET(players[i].fd, &active_fds); //add to working set
             if(server.num_players == NUM_PLAYERS) return 0;
             i++;
         }
@@ -200,7 +200,7 @@ void reject_connections(void) {
     struct fd_set fds;
     FD_ZERO(&fds);
     FD_SET(server.fd, &fds);
-    int sel_err = select(server.fd, &fds, NULL, NULL, NULL); //BLOCKING CONNECTION
+    int sel_err = select(server.fd + 1, &fds, NULL, NULL, NULL); //BLOCKING CONNECTION
     if(sel_err < 0) { //error
         perror(NULL);
         return;

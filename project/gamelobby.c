@@ -20,7 +20,7 @@ int start_game(void) {
 
     //CYCLE THROUGH EACH PLAYER
     while(true) {
-        if(play_game_round() == 0) break;
+        if(play_game_round() == 0) break; //player victory game over
         printf("ENTER STRING TO CONTINUE.\n");
         buf = calloc(MSG_SIZE, sizeof(char));
         gets(buf);
@@ -34,37 +34,53 @@ int start_game(void) {
  */
 int play_game_round( void ) {
     PLAYER * p;
-    int active_players = queue.count; //iterate through all players once.
+
+    memcpy( &rfds, &active_fds, sizeof(active_fds));
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+
+    conn_err = select(FD_SETSIZE, &rfds, NULL, NULL, &tv); //5 seconds to make move
+    if(conn_err < 0) {
+        perror("SELECT\n");
+        exit(EXIT_FAILURE);
+    }
+    else if(conn_err == 0) {
+        fprintf(stderr, "NO GAME PLAYERS MADE A MOVE\n");
+        return -1;
+    }
+    //MORE THAN 0 PLAYERS HAVE SENT A MOVE
+    int active_players = size(&queue); //iterate through all players once.
     printf("------------------\n");
     for(int i = 0; i < active_players; i++) {
         p = dequeue_front(&queue); //get player
-        err = receive_move(p);
-        switch (err) {
-            case 0 : { //success
-                printf("RECEIVED: %s / %d\n", p->move, p->id);
-                enqueue(&queue, p);
-                break;
+        if(!FD_ISSET(p->fd, &rfds)) { //MOVE NOT RECEIVED
+            printf("FAILED TO RECEIVE MOVE: %d\n", p->id);
+            p->move = NULL; //player->move is equal to?
+            enqueue(&queue, p);
+            continue;
+        }
+        else { //CONNECTION FD ready for reading
+            err = receive_move(p);
+            switch (err) {
+                case 0 : { //success
+                    printf("RECEIVED: %s / %d\n", p->move, p->id);
+                    enqueue(&queue, p);
+                    break;
+                }
+                case -1 : { //failure
+                    printf("FAILED TO RECEIVE MOVE: %d\n", p->id);
+                    p->move = NULL; //player->move is equal to?
+                    enqueue(&queue, p);
+                    break;
+                }
+                case -3 : { // CLIENT LEFT
+                    printf("CLIENT: %d has left the game.\n", p->id);
+                    p->alive = false;
+                    close(p->fd);
+                    continue;
+                }
+                default : continue;
             }
-            case -1 : { //failure
-                printf("FAILED TO RECEIVE MOVE: %d\n", p->id);
-                p->move = NULL; //player->move is equal to?
-                enqueue(&queue, p);
-                break;
-            }
-            case -2 : { //timeout failure
-                printf("TIMEOUT to receive move from: %d\n", p->id);
-                p->move = NULL; //what is player->move equal to
-                enqueue(&queue, p);
-                break;
-            }
-            case -3 : { // CLIENT LEFT
-                printf("CLIENT: %d has left the game.\n", p->id);
-                p->alive = false;
-                close(p->fd);
-                //close player & set alive to false;
-                continue;
-            }
-            default : continue;
         }
     }
 
@@ -74,27 +90,30 @@ int play_game_round( void ) {
     //OUTCOME
     QUEUE dead_queue; //queue managing players that are not alive
     construct_queue(&dead_queue, NUM_PLAYERS);
-    active_players = queue.count;
+    active_players = size(&queue);
     for(int i = 0; i < active_players; i++) {
         p = dequeue_front(&queue);
-        if(!p->alive) continue;
+        if(!p->alive) continue; //caution
         err = send_outcome(p); //handle comparison, lives and sending message
         if(err < 0) 
             fprintf(stderr, "ERROR sending outcome to client: %d\n", p->id);
+            enqueue(&dead_queue, p);
+            continue;
+        
         if(p->lives <= 0) { //failed and NO lives
             p->alive = false; //set player to not alive
             enqueue(&dead_queue, p); //add player to dead_queue
             continue;
         }
         else //lives is > 0
-            enqueue(&queue, p);
+            enqueue(&queue, p); //add back to active queue
         continue;
     }
 
     //SEND STATUS
-    if(queue.count <= 0 && dead_queue.count > 0) { //no more players in game
+    if(size(&queue) <= 0 && size(&dead_queue) > 0) { //no more players in game
         //SEND VICTORY to all people in dead_queue;
-        active_players = dead_queue.count;
+        active_players = size(&dead_queue);
         for(int i = 0; i < active_players; i++) {
             p = dequeue_front(&dead_queue);
             send_vict(p);
@@ -102,26 +121,31 @@ int play_game_round( void ) {
         }
         return 0; //victory
     }
-    else if(queue.count == 1) { //one winner.
-        //SEND VICTORY to people in queue
+    else if(size(&queue) == 1) { //one winner.
+        //SEND VICTORY to person in queue
         p = dequeue_front(&queue);
         send_vict(p); //handle failure to send?
+        close(p->fd);
+
         //SEND ELIMINATION TO ALL PEOPLE IN dead_queue;
-        active_players = dead_queue.count;
+        active_players = size(&dead_queue);
+        if(active_players < 0) return 0;
         for(int i = 0; i < active_players; i++) {
             p = dequeue_front(&dead_queue);
-            send_elim(p); //handle failrue to send?
+            send_elim(p); //handle failure to send?
+            close(p->fd);
             continue;
         }
         return 0; //victory
     }
     else {
         //DEAD_QUEUE
-        active_players = dead_queue.count;
-        if(active_players > 0) {
+        active_players = size(&dead_queue);
+        if(active_players >= 0) {
             for(int i = 0; i < active_players; i++) {
                 p = dequeue_front(&dead_queue);
                 send_elim(p); //handle failure to send?
+                close(p->fd);
                 continue;
             }
         }
@@ -131,18 +155,23 @@ int play_game_round( void ) {
     return -1;
 }
 
+/**
+ * INITIALISE: player lives, alive status to true & active_fds
+ */
 void set_player_lives(void) {
+    FD_ZERO(&active_fds);
     for(int i = 0; i < server.num_players; i++) {
         players[i].lives = NUM_LIVES;
         players[i].alive = true;
+        FD_SET(players[i].fd, &active_fds);
     }
 }
 
 /**
- * Wait for game player to send move. EVEN || ODD || DOUB || CON,%d
+ * TEMPORARY BLOCKING HANDLED BEFORE FUNCTION CALL
+ * player to send move. EVEN || ODD || DOUB || CON,%d
  * On player timeout, set player.alive status to FALSE
  * @return 0 to indicate success, -1 to indicate error
- * @return -2 to indicate timeout
  * @return -3 to indicate proper client file descriptor shutdown
  */
 int receive_move(PLAYER * p) {
@@ -190,7 +219,7 @@ int send_outcome(PLAYER * p) {
 int parse_move(PLAYER * p, char * move) {
     char delim[2] = ",";
     char * tok = strtok(move, delim);
-    int n = 0;
+    int n = 0; //handle switch ordering
     while(tok != NULL) {
         switch(n) {
             case 0 : { //player id verification
@@ -291,6 +320,12 @@ bool move_is_correct(PLAYER * p) {
  * @return 0 to indicate success, -1 otherwise.
  */
 int send_pass(PLAYER * p) {
+    FD_ZERO(&wfds);
+    FD_SET(p->fd, &wfds);
+
+    if(select(p->fd+1, NULL, &wfds, NULL, NULL) < 0) //BLOCKING
+        return -1;
+    
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s", p->id, "PASS");
     err = send(p->fd, buf, strlen(buf), 0);
@@ -306,6 +341,12 @@ int send_pass(PLAYER * p) {
  * @return 0 to indicate success, -1 otherwise.
  */
 int send_fail(PLAYER * p) {
+    FD_ZERO(&wfds);
+    FD_SET(p->fd, &wfds);
+
+    if(select(p->fd+1, NULL, &wfds, NULL, NULL) < 0) //BLOCKING
+        return -1;
+    
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s", p->id, "FAIL");
     err = send(p->fd, buf, strlen(buf), 0);
@@ -321,6 +362,12 @@ int send_fail(PLAYER * p) {
  * @return 0 to indicate success and -1 otherwise
  */
 int send_vict(PLAYER * p) {
+    FD_ZERO(&wfds);
+    FD_SET(p->fd, &wfds);
+
+    if(select(p->fd+1, NULL, &wfds, NULL, NULL) < 0) //BLOCKING
+        return -1;
+    
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s", p->id, "VICT");
     err = send(p->fd, buf, strlen(buf), 0);
@@ -336,6 +383,12 @@ int send_vict(PLAYER * p) {
  * @return 0 to indicate success and -1 otherwise
  */
 int send_elim(PLAYER * p) {
+    FD_ZERO(&wfds);
+    FD_SET(p->fd, &wfds);
+
+    if(select(p->fd+1, NULL, &wfds, NULL, NULL) < 0) //BLOCKING
+        return -1;
+    
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s", p->id, "ELIM");
     err = send(p->fd, buf, strlen(buf), 0);

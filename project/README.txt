@@ -38,4 +38,5 @@ CURRENTLY:
     - Need to implement select() to find if a connection attempt is attempting to be made
     - kill when send() function fails.
     - implement sleep(10) to wait for all clients to send their message ... and then quickly cycle through all players
+    - how to exit parent of child (fork) with the status of the child
     
