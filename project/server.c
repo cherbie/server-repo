@@ -33,15 +33,12 @@ int main(int argc, char * argv[]) {
     }
     
     printf("Server is listening on %d\n", port);
-    
+
     err = listenForInit(NUM_PLAYERS); //manages the introduction of players to the game
-    if(err == -2) { //timeout for players joining the game
-        fprintf(stderr, "Game timeout due to lack of players joining.\n");
+    if(err < 0) {
+        fprintf(stderr, "Game connection establishment timeout. Failed to establish connection.\n");
         send_cancel();
-        exit(EXIT_FAILURE);
-    }
-    else if(err == -1) {
-        fprintf(stderr, "Failed to establish connection with requesting player.\n");
+        gets(buf);
         exit(EXIT_FAILURE);
     }
     

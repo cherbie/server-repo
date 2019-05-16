@@ -41,9 +41,9 @@ int listenForInit(int x) {
         while(true) {
             socklen_t addr_len = sizeof(players[i].addr);
             tempfd = accept(server.fd, (struct sockaddr *) &players[i].addr, &addr_len);
-            if(tempfd < 0) { //error
+            if(tempfd < 0) { //error -- not enough clients connected / in buffer
                 perror("accept()\n");
-                continue;
+                return -1;
             }
             players[i].fd = tempfd;
             fcntl(players[i].fd, F_SETFL, O_NONBLOCK); //SET TO NON-BLOCKING
