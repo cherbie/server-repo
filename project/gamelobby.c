@@ -12,6 +12,7 @@ int start_game(void) {
     if(server.num_players == NUM_PLAYERS) { //ENOUGH PLAYERS IN THE GAME
         set_player_lives(); //set players initial lives
         send_start(); //send "START, %d, %d" packet
+        construct_queue(&dead_queue, NUM_PLAYERS);
     }
     else {
         send_cancel(); //send "CANCEL"
@@ -84,27 +85,29 @@ int play_game_round( void ) {
     roll_dice(&server);
 
     //OUTCOME
-    QUEUE dead_queue; //queue managing players that are not alive
-    construct_queue(&dead_queue, NUM_PLAYERS);
     active_players = size(&queue);
     for(int i = 0; i < active_players; i++) {
         p = dequeue_front(&queue);
-        if(!p->alive) continue; //cautionary measure
-        err = send_outcome(p); //handle comparison, lives and sending message
-        if(err < 0) {
-            fprintf(stderr, "ERROR sending outcome to client: %d\n", p->id);
-            enqueue(&dead_queue, p);
-            continue;
-        }
-
-        if(p->lives <= 0) { //failed and NO lives
-            p->alive = false; //set player to not alive
-            enqueue(&dead_queue, p); //add player to dead_queue
-            continue;
-        }
-        else //lives is > 0
+        if(!p->alive || p == NULL) continue; //cautionary measure
+        printf("CHECKING IF MOVE CORRRECT\n");
+        if(!move_is_correct(p)) { //handle comparison & lives //sending message
+            //NOT CORRECT
+            p->correct = false;
+            if(p->lives <= 0) { //FAILED AND NO LIVES REMAINING
+                p->alive = false; //set player to not alive
+                enqueue(&dead_queue, p); //add player to dead_queue
+                continue;
+            }
+            //LIVES REMAINING
+            //send_fail(p);
             enqueue(&queue, p); //add back to active queue
-        continue;
+            continue;
+        }
+        else { //CORRECT MOVE DECISION
+            p->correct = true;
+            enqueue(&queue, p);
+            continue;
+        }
     }
 
     //SEND STATUS
@@ -113,8 +116,8 @@ int play_game_round( void ) {
         active_players = size(&dead_queue);
         for(int i = 0; i < active_players; i++) {
             p = dequeue_front(&dead_queue);
-            printf("victory -> %d\n", p->id);
             send_vict(p);
+            close(p->fd);
             continue;
         }
         return 0; //victory
@@ -133,20 +136,36 @@ int play_game_round( void ) {
             send_elim(p); //handle failure to send?
             FD_CLR(p->fd, &active_fds);
             close(p->fd);
-            continue;
         }
         return 0; //victory
     }
-    else {
-        //DEAD_QUEUE
+    else { //MULTIPLE GAME PLAYERS IN GAME
+        //HANDLE DEAD_QUEUE
         active_players = size(&dead_queue);
-        if(active_players >= 0) {
-            for(int i = 0; i < active_players; i++) {
+        if(active_players > 0) {
+            for(int i = 0; i < active_players; i++) { //SEND ELIM message & close file descriptor
                 p = dequeue_front(&dead_queue);
-                send_elim(p); //handle failure to send?
+                send_elim(p);
                 FD_CLR(p->fd, &active_fds);
                 close(p->fd);
-                continue;
+            }
+        }
+
+        //HANDLE ACTIVE PLAYERS
+        active_players = size(&queue);
+        if(active_players > 0) {
+            for(int i = 0; i < active_players; i++) {
+                p = dequeue_front(&queue);
+                if(p->correct) { //CORRECT MOVE
+                    send_pass(p);
+                    enqueue(&queue, p);
+                    continue;
+                }
+                else {
+                    send_fail(p);
+                    enqueue(&queue, p);
+                    continue;
+                }
             }
         }
     }
@@ -194,8 +213,7 @@ int receive_move(PLAYER * p) {
  */
 void roll_dice(SERVER * s) {
     s->dice = malloc(NUM_DICE * sizeof(int));
-    for(int i = 0; i < NUM_DICE; i++)
-        s->dice[i] = (rand()%6 + 1);
+    for(int i = 0; i < NUM_DICE; i++) s->dice[i] = (rand()%6 + 1);
     printf("dice1:\t%d\tdice2:\t%d\n", s->dice[0], s->dice[1]);
     return;
 }
@@ -311,8 +329,9 @@ bool move_is_correct(PLAYER * p) {
             return true;
         }
         p->lives -= 1; //player failed
-    }    
-    return false;
+        return false;
+    }
+    else return false;
 }
 
 /**
@@ -322,17 +341,18 @@ bool move_is_correct(PLAYER * p) {
 int send_pass(PLAYER * p) {
     FD_ZERO(&wfds);
     FD_SET(p->fd, &wfds);
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
 
-    if(select(p->fd+1, NULL, &wfds, NULL, NULL) <= 0) //BLOCKING
+    if(select(p->fd+1, NULL, &wfds, NULL, &tv) <= 0) {//BLOCKING
+        perror("select (send_pass): error\n");
         return -1;
-    
+    }
+
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s", p->id, "PASS");
     err = send(p->fd, buf, strlen(buf), 0);
     printf("%s\n", buf);
-    for(int i = 0; i < strlen(buf); i++) {
-        printf("%i|", (int) buf[i]);
-    }
     if(err < 0)
         return -1;
     else 
@@ -347,7 +367,10 @@ int send_fail(PLAYER * p) {
     FD_ZERO(&wfds);
     FD_SET(p->fd, &wfds);
 
-    if(select(p->fd+1, NULL, &wfds, NULL, NULL) < 0) //BLOCKING
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+
+    if(select(p->fd+1, NULL, &wfds, NULL, &tv) < 0) //BLOCKING
         return -1;
     
     buf = calloc(MSG_SIZE, sizeof(char));
@@ -368,7 +391,10 @@ int send_vict(PLAYER * p) {
     FD_ZERO(&wfds);
     FD_SET(p->fd, &wfds);
 
-    if(select(p->fd+1, NULL, &wfds, NULL, NULL) <= 0) //BLOCKING
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+
+    if(select(p->fd+1, NULL, &wfds, NULL, &tv) <= 0) //BLOCKING
         return -1;
     
     buf = calloc(MSG_SIZE, sizeof(char));
@@ -389,7 +415,10 @@ int send_elim(PLAYER * p) {
     FD_ZERO(&wfds);
     FD_SET(p->fd, &wfds);
 
-    if(select(p->fd+1, NULL, &wfds, NULL, NULL) <= 0) //BLOCKING
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+
+    if(select(p->fd+1, NULL, &wfds, NULL, &tv) <= 0) //BLOCKING
         return -1;
     
     buf = calloc(MSG_SIZE, sizeof(char));

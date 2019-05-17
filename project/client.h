@@ -36,5 +36,4 @@ int extract_start(char *);
 int receive_welcome(SERVER *, char *);
 void send_move(char *);
 void receive_result(void);
-void receive_status(void);
 

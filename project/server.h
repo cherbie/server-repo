@@ -27,6 +27,7 @@ typedef struct {
     char * move;
     int roll; //store %d value in "CON,%d" packet
     bool alive;
+    bool correct;
 } PLAYER;
 
 typedef struct {
@@ -47,7 +48,7 @@ typedef struct {
 int port;
 SERVER server; //socket integer descriptors
 PLAYER * players; //define players
-QUEUE queue;
+QUEUE queue, dead_queue; //queue managing players that are not alive and alive
 int rec_err, send_err, conn_err, err, opt_val; //temporary variables
 char *buf; //socket input and output stream buffer
 

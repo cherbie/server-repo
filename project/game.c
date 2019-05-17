@@ -33,7 +33,6 @@ int main(int argc, char* argv[])
         gets(cp);
         send_move(cp);
         receive_result();
-        receive_status();
 
         printf("PRESS ENTER TO CONTINUE\n");
         gets(buf);
@@ -249,7 +248,7 @@ void receive_result(void) {
     }
     else {
         buf = calloc(MSG_SIZE, sizeof(char));
-        recv(player.fd, buf, 7, 0);
+        recv(player.fd, buf, MSG_SIZE, 0);
         printf("RECEIVED: %s\n", buf);
 
         char delim[2] = ",";
@@ -268,47 +267,7 @@ void receive_result(void) {
                 player.lives -= 1;
                 return;
             }
-            else {
-                fprintf(stderr, "RECEIVED ODD PACKET!\n");
-                return;
-            }
-        }
-    }
-}
-
-void receive_status(void) {
-    FD_ZERO(&active_fds);
-    FD_SET(player.fd, &active_fds);
-    tv.tv_sec = 2;
-    tv.tv_usec = 0;
-
-    int retval = select(player.fd+1, &active_fds, NULL, NULL, &tv);
-    fprintf(stderr, "RETURN VALUE:\t%d\n", retval);
-    if(retval < 0) {
-        fprintf(stderr, "select: error with file descriptor");
-        close(player.fd);
-        exit(EXIT_FAILURE);
-    }
-    else if( retval == 0 ) {
-        fprintf(stderr, "select (STATUS): no status message received.\n");
-        return;
-    }
-
-    else {
-        buf = calloc(MSG_SIZE, sizeof(char));
-        recv(player.fd, buf, MSG_SIZE, 0);
-        printf("RECEIVED: %s\n", buf);
-
-        char delim[2] = ",";
-        char * tok = strtok(buf, delim);
-        while(tok != NULL) {
-            int id = atoi(tok);
-            if(id != player.id) {
-                perror("MESSAGE RECEIVED IS NOT INTENDED FOR THIS CLIENT\n");
-                return;
-            } 
-            tok = strtok(NULL, delim);
-            if(strcmp(tok, "ELIM") == 0) { //ELIM
+            else if(strcmp(tok, "ELIM") == 0) { //ELIM
                 close(player.fd);
                 printf("END OF GAME!\n");
                 exit(EXIT_SUCCESS);
@@ -318,7 +277,12 @@ void receive_status(void) {
                 printf("END OF GAME!\n");
                 exit(EXIT_SUCCESS);
             }
+            else {
+                fprintf(stderr, "RECEIVED ODD PACKET!\n");
+                return;
+            }
         }
     }
 }
+
 

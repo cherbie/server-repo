@@ -47,7 +47,6 @@ int main(int argc, char * argv[]) {
             srand(time(NULL));
             if( start_game() == 0 ) exit(EXIT_SUCCESS);
             else exit(EXIT_FAILURE);
-
         }
         case -1 : { //error forking
             perror("UNEXPECTED APPLICATION ERROR: FORKING_ERROR.\n");

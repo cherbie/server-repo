@@ -40,4 +40,5 @@ CURRENTLY:
     - If recv == 0 close client file descriptor -- further testing required
     - implement sleep(10) to wait for all clients to send their message ... and then quickly cycle through all players -- done(needs to be 30 seconds though)
     - how to exit parent of child (fork) with the status of the child
+    - do not need to send pass or fail when VICT or ELIM is sent
     
