@@ -52,9 +52,24 @@ int main(int argc, char * argv[]) {
             perror("UNEXPECTED APPLICATION ERROR: FORKING_ERROR.\n");
         }
         default : { //parent
-            while(true)
-                reject_connections();
-            // exit with child exit status
+            //HANDLE PLAYERS ATTEMPTING TO CONNECT AFTER GAME HAS STARTED
+            int p = fork();
+            if(p == 0) { //CHILD
+                while(true)
+                    reject_connections();
+            }
+            else if( p == -1) {
+                perror(NULL);
+                return EXIT_FAILURE;
+            }
+            else { //parent
+                int wstatus;
+                wait(&wstatus);
+                close(server.fd);
+                if(WIFEXITED(wstatus)) //TRUE -- has exited
+                    //exit(WEXITSTATUS(wstatus));
+                gets(buf);
+            }
         }
     }
 }

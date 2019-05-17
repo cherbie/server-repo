@@ -9,6 +9,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include <sys/select.h>
+#include <sys/wait.h>
 
 #define BUFFER_SIZE 1024
 #define MSG_SIZE 14 //bytes

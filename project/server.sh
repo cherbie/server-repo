@@ -7,3 +7,4 @@ xterm -e ./server $socket &
 xterm -e ./game.sh &
 xterm -e ./game.sh &
 xterm -e ./game.sh &
+xterm -e ./game.sh &

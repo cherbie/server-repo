@@ -89,7 +89,6 @@ int play_game_round( void ) {
     for(int i = 0; i < active_players; i++) {
         p = dequeue_front(&queue);
         if(!p->alive || p == NULL) continue; //cautionary measure
-        printf("CHECKING IF MOVE CORRRECT\n");
         if(!move_is_correct(p)) { //handle comparison & lives //sending message
             //NOT CORRECT
             p->correct = false;
@@ -305,11 +304,9 @@ int parse_move(PLAYER * p, char * move) {
 void upper_string(char * cp) {
    int i = 0;
    while (cp[i] != '\0') {
-       printf("upper_string: %c -|-", cp[i]);
       if (cp[i] >= 'a' && cp[i] <= 'z') {
          cp[i] = cp[i] - 32;
       }
-      printf(" %c\n", cp[i]);
       i++;
    }
 }

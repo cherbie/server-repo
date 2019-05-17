@@ -23,8 +23,8 @@ PROJECT STATUS:
 14. handle players number of lives and existence within game lobby -- further testing required
 15. handle players unexpectedly leaving game -- further testing required
 16. handle players timeout issue for submitting move. --testing required
-15. send "VICT" -- done / further work required
-16. send "LOSER" -- done / further work required
+15. send "VICT" -- done
+16. send "ELIM" -- done
 17. Keep server open after a round has been played?
 17. Create test environment and test many cases.
 
@@ -32,13 +32,18 @@ CURRENTLY:
  ---
     - Need to advance client side game play (improve logging to terminal).
     - Need to send cancel to players if game cannot be established -- done
-    - need to implement timer interrupts (pthread) -- done using select and sleep
-    - need to decide whether to close all connections after a victor has been announced -- yes all connections closed
+    - need to implement timer interrupts (pthread) -- done -> using select and sleep
+    - need to decide whether to close all connections after a victor has been announced -- done : yes all connections closed
     - need to track client connection status throughout the programming by checking all recv calls -- further testing required
-    - Need to implement select() to find if a connection attempt is attempting to be made -- implemented
-    - kill when send() function fails? 
+    - Need to implement select() to find if a connection attempt is attempting to be made -- done
+    - kill when send() function fails? ?????????
+         - can either kill connection
+         - or attempt to resend after a delay. 
+         - ** NOT SPECIFIED HENCE YOU CAN SELECT YOUR PATH AND DESCRIBE YOUR CHOICE THROUGH COMMENTS
     - If recv == 0 close client file descriptor -- further testing required
     - implement sleep(10) to wait for all clients to send their message ... and then quickly cycle through all players -- done(needs to be 30 seconds though)
     - how to exit parent of child (fork) with the status of the child
     - do not need to send pass or fail when VICT or ELIM is sent
+    - remove all server print statements
+    - remove all gets() breaks
     
