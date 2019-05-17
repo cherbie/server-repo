@@ -260,6 +260,8 @@ int parse_move(PLAYER * p, char * move) {
                 continue;
             }
             case 2 : { //MOVE -- EVEN || ODD || DOUB || CON
+                upper_string(tok);
+                if(tok == NULL) return -1;
                 if(strcmp(tok, "EVEN") == 0) { //EVEN
                     p->move = calloc(MSG_SIZE, sizeof(char));
                     sprintf(p->move, "%s", "EVEN");
@@ -295,6 +297,21 @@ int parse_move(PLAYER * p, char * move) {
         }
     }
     return -1; //not meant to reach this stage
+}
+
+/**
+ * convert all characters before null-byte to uppercase.
+ */
+void upper_string(char * cp) {
+   int i = 0;
+   while (cp[i] != '\0') {
+       printf("upper_string: %c -|-", cp[i]);
+      if (cp[i] >= 'a' && cp[i] <= 'z') {
+         cp[i] = cp[i] - 32;
+      }
+      printf(" %c\n", cp[i]);
+      i++;
+   }
 }
 
 /**

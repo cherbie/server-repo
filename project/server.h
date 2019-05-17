@@ -79,6 +79,7 @@ int play_game_round(void);
 int send_vict(PLAYER *);
 int send_elim(PLAYER *);
 int receive_init(QUEUE *, PLAYER *, int);
+void upper_string(char *);
 
 //QUEUE FUNCTION DECLARATIONS
 bool isFull(QUEUE *);
