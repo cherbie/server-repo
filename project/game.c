@@ -202,8 +202,8 @@ int receive_welcome(SERVER * p, char * s) {
 void send_move(char * str) {
     FD_ZERO(&active_fds);
     FD_SET(player.fd, &active_fds);
-    tv.tv_sec = 5;
-    tv.tv_usec = 0;
+    //tv.tv_sec = 5;
+    //tv.tv_usec = 0;
 
     int retval = select(player.fd+1, NULL, &active_fds, NULL, NULL);
     fprintf(stderr, "RETURN VALUE:\t%d\n", retval);
@@ -243,13 +243,13 @@ void receive_result(void) {
         exit(EXIT_FAILURE);
     }
     else if( retval == 0 ) {
-        fprintf(stderr, "select: could not read from fd.");
+        fprintf(stderr, "select (RESULT): could not read from fd.\n");
         return;
         //exit(EXIT_FAILURE);
     }
     else {
         buf = calloc(MSG_SIZE, sizeof(char));
-        recv(player.fd, buf, MSG_SIZE, 0);
+        recv(player.fd, buf, 7, 0);
         printf("RECEIVED: %s\n", buf);
 
         char delim[2] = ",";
@@ -290,7 +290,7 @@ void receive_status(void) {
         exit(EXIT_FAILURE);
     }
     else if( retval == 0 ) {
-        fprintf(stderr, "select: could not read from fd.");
+        fprintf(stderr, "select (STATUS): no status message received.\n");
         return;
     }
 

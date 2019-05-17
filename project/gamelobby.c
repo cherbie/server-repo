@@ -20,10 +20,9 @@ int start_game(void) {
 
     //CYCLE THROUGH EACH PLAYER
     while(true) {
-        if(play_game_round() == 0) break; //player victory game over
         printf("ENTER STRING TO CONTINUE.\n");
-        buf = calloc(MSG_SIZE, sizeof(char));
         gets(buf);
+        if(play_game_round() == 0) break; //player victory game over
     }
     return 0;
 }
@@ -36,7 +35,7 @@ int play_game_round( void ) {
     PLAYER * p;
 
     memcpy( &rfds, &active_fds, sizeof(active_fds));
-    tv.tv_sec = 5;
+    tv.tv_sec = 10;
     tv.tv_usec = 0;
 
     conn_err = select(FD_SETSIZE, &rfds, NULL, NULL, &tv); //5 seconds to make move
@@ -61,25 +60,22 @@ int play_game_round( void ) {
         }
         else { //CONNECTION FD ready for reading
             err = receive_move(p);
-            switch (err) {
-                case 0 : { //success
-                    printf("RECEIVED: %s / %d\n", p->move, p->id);
-                    enqueue(&queue, p);
-                    break;
-                }
-                case -1 : { //failure
-                    printf("FAILED TO RECEIVE MOVE: %d\n", p->id);
-                    p->move = NULL; //player->move is equal to?
-                    enqueue(&queue, p);
-                    break;
-                }
-                case -3 : { // CLIENT LEFT
-                    printf("CLIENT: %d has left the game.\n", p->id);
-                    p->alive = false;
-                    close(p->fd);
-                    continue;
-                }
-                default : continue;
+            if(err == -3) { //CLIENT HAS LEFT THE GAME
+                printf("CLIENT: %d has left the game.\n", p->id);
+                p->alive = false;
+                close(p->fd);
+                continue;
+            }
+            else if(err < 0) { //error receiving move (timeout or otherwise)
+                printf("FAILED TO RECEIVE MOVE: %d\n", p->id);
+                p->move = NULL; //player->move is equal to?
+                enqueue(&queue, p);
+                continue;
+            }
+            else { // SUCCESS
+                printf("RECEIVED: %s / %d\n", p->move, p->id);
+                enqueue(&queue, p);
+                continue;
             }
         }
     }
@@ -93,13 +89,14 @@ int play_game_round( void ) {
     active_players = size(&queue);
     for(int i = 0; i < active_players; i++) {
         p = dequeue_front(&queue);
-        if(!p->alive) continue; //caution
+        if(!p->alive) continue; //cautionary measure
         err = send_outcome(p); //handle comparison, lives and sending message
-        if(err < 0) 
+        if(err < 0) {
             fprintf(stderr, "ERROR sending outcome to client: %d\n", p->id);
             enqueue(&dead_queue, p);
             continue;
-        
+        }
+
         if(p->lives <= 0) { //failed and NO lives
             p->alive = false; //set player to not alive
             enqueue(&dead_queue, p); //add player to dead_queue
@@ -116,6 +113,7 @@ int play_game_round( void ) {
         active_players = size(&dead_queue);
         for(int i = 0; i < active_players; i++) {
             p = dequeue_front(&dead_queue);
+            printf("victory -> %d\n", p->id);
             send_vict(p);
             continue;
         }
@@ -133,6 +131,7 @@ int play_game_round( void ) {
         for(int i = 0; i < active_players; i++) {
             p = dequeue_front(&dead_queue);
             send_elim(p); //handle failure to send?
+            FD_CLR(p->fd, &active_fds);
             close(p->fd);
             continue;
         }
@@ -145,6 +144,7 @@ int play_game_round( void ) {
             for(int i = 0; i < active_players; i++) {
                 p = dequeue_front(&dead_queue);
                 send_elim(p); //handle failure to send?
+                FD_CLR(p->fd, &active_fds);
                 close(p->fd);
                 continue;
             }
@@ -207,7 +207,7 @@ void roll_dice(SERVER * s) {
 int send_outcome(PLAYER * p) {
     //ANALYSE MOVE & SEND PASS OR FAIL
     if(move_is_correct(p))
-        return send_pass(p); //if lost connection to player will send 0 (success) .. not goog
+        return send_pass(p); //if lost connection to player will send 0 (success) ??
     else 
         return send_fail(p); //attempt to send "FAIL"
 }
@@ -323,13 +323,16 @@ int send_pass(PLAYER * p) {
     FD_ZERO(&wfds);
     FD_SET(p->fd, &wfds);
 
-    if(select(p->fd+1, NULL, &wfds, NULL, NULL) < 0) //BLOCKING
+    if(select(p->fd+1, NULL, &wfds, NULL, NULL) <= 0) //BLOCKING
         return -1;
     
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s", p->id, "PASS");
     err = send(p->fd, buf, strlen(buf), 0);
     printf("%s\n", buf);
+    for(int i = 0; i < strlen(buf); i++) {
+        printf("%i|", (int) buf[i]);
+    }
     if(err < 0)
         return -1;
     else 
@@ -365,7 +368,7 @@ int send_vict(PLAYER * p) {
     FD_ZERO(&wfds);
     FD_SET(p->fd, &wfds);
 
-    if(select(p->fd+1, NULL, &wfds, NULL, NULL) < 0) //BLOCKING
+    if(select(p->fd+1, NULL, &wfds, NULL, NULL) <= 0) //BLOCKING
         return -1;
     
     buf = calloc(MSG_SIZE, sizeof(char));
@@ -386,7 +389,7 @@ int send_elim(PLAYER * p) {
     FD_ZERO(&wfds);
     FD_SET(p->fd, &wfds);
 
-    if(select(p->fd+1, NULL, &wfds, NULL, NULL) < 0) //BLOCKING
+    if(select(p->fd+1, NULL, &wfds, NULL, NULL) <= 0) //BLOCKING
         return -1;
     
     buf = calloc(MSG_SIZE, sizeof(char));
