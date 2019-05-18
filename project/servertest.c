@@ -53,13 +53,9 @@ int main(int argc, char * argv[]) {
                 }
                 exit(EXIT_SUCCESS);
             }
-            else if(pid == -1){
+            else if(pid == -1) {
                 perror(NULL);
                 exit(EXIT_FAILURE);
-            }
-            else {
-                //PARENT
-                continue;
             }
         }
         int i = wait(&status);

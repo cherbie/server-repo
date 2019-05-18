@@ -152,13 +152,12 @@ int extract_start(char * s) {
  */
 int init_match(void) {
     connect_to_server();
-
     printf("Connected to server on port: %d\n\tclient:\t%d\n", port, player.fd);
 
     if( send_msg("INIT") < 0 ) {
         return -1;
     }
-
+    
     buf = calloc(MSG_SIZE, sizeof(char));
     if( recv(player.fd, buf, MSG_SIZE, 0) < 0) {
         fprintf(stderr, "Error receiving reply to %s message sent.\n", "INIT");
@@ -179,6 +178,7 @@ int init_match(void) {
     }
 
     //RECEIVE START
+
     buf = calloc(MSG_SIZE, sizeof(char));
     err = recv(player.fd, buf, MSG_SIZE, 0);
     if( err < 0) 

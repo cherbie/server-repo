@@ -11,10 +11,10 @@
 #include <sys/select.h>
 #include <sys/wait.h>
 
-#define BUFFER_SIZE 1024
+//#define BUFFER_SIZE 1024
 #define MSG_SIZE 14 //bytes
-#define NUM_LIVES 5 
-#define NUM_PLAYERS 5 //adjust number of players
+#define NUM_LIVES 3 
+#define NUM_PLAYERS 10 //adjust number of players
 #define NUM_SERVERS 1 //allow for scaling
 #define NUM_DICE 2
 

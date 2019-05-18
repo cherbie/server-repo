@@ -47,3 +47,4 @@ CURRENTLY:
     - remove all server print statements
     - remove all gets() breaks
     
+    still exists a bug with DOUB move
