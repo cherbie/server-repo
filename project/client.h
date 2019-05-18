@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/select.h>
+#include <time.h>
+
 
 #define BUFFER_SIZE 1024
 #define MSG_SIZE 1000

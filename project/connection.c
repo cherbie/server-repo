@@ -68,7 +68,7 @@ int listenForInit(int x) {
  * @return: -1 to indicate connection error
  */
 int receive_init(QUEUE * q, PLAYER * p, int count) {
-    tv.tv_sec = 5;
+    tv.tv_sec = 30;
     tv.tv_usec = 0;
 
     FD_ZERO(&rfds);

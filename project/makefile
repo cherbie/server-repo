@@ -5,7 +5,11 @@ CONNECTION = connection.c server.h
 GAMELOBBY = gamelobby.c server.h
 CLIENT = game.c client.h
 CLIENT_O = game.o
+TEST = servertest.c
 CC = cc -std=c99 -Wall -Werror -pedantic
+
+test : $(TEST)
+	$(CC) -o test $(TEST)
 
 server : $(SERVER_O)
 	$(CC) -o server $(SERVER_O)

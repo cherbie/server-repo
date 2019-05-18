@@ -17,12 +17,16 @@ NOTE --> PREDOMINANTLY SERVER LOGIC
 
 int main(int argc, char * argv[]) {
     
-    if (argc < 2) {
-        fprintf(stderr,"Usage: %s [port]\n",argv[0]);
+    if (argc < 3) {
+        fprintf(stderr,"Usage: %s [port] [number of players]\n",argv[0]);
         exit(EXIT_FAILURE);
     }
 
     port = atoi(argv[1]);
+    if( atoi(argv[2]) != NUM_PLAYERS ) {
+        fprintf(stderr, "INCORRECT NUMBER OF PLAYERS SPECIFIED. NEED %d\n", NUM_PLAYERS);
+        return EXIT_FAILURE;
+    }
 
     set_server_socket(NUM_SERVERS); //EXIT_FAILURE UPON ERROR
 

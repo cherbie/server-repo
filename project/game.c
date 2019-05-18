@@ -8,15 +8,18 @@
  */
 
 #include "client.h"
+char** mov;
+char move_options[4][5] = {{"EVEN"}, {"ODD"}, {"DOUB"}, {"CON"}};
 
 int main(int argc, char* argv[])
 {
-    if (argc < 2) {
-        fprintf(stderr,"Usage: %s [port]\n",argv[0]);
+    if (argc < 3) {
+        fprintf(stderr,"Usage: %s [port] [srand]\n",argv[0]);
         exit(EXIT_FAILURE);
     }
 
     port = atoi(argv[1]);
+    srand(atoi(argv[2]));
 
     //INITIALISE MATCH
     if( init_match() < 0 ) {
@@ -24,18 +27,32 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    fcntl(player.fd, O_NONBLOCK);
+    fcntl(player.fd, F_SETFL, O_NONBLOCK);
 
+    mov = malloc(4 * sizeof(char*));
+    for(int i = 0; i < 4; i++) {
+        //mov[i] = calloc(5, sizeof(char));
+        mov[i] = strdup(move_options[i]);
+    }
     while(true) {
-        char *cp = calloc(MSG_SIZE, sizeof(char));
+        //char *cp = calloc(MSG_SIZE, sizeof(char));
         printf("----------------------------------------------\n");
         printf("TYPE YOUR MOVE (ODD, EVEN, DOUB, CON, int):\n");
-        gets(cp);
-        send_move(cp);
+        //gets(cp);
+        sleep(2);
+        int i = rand()%4;
+
+        if(strcmp(mov[i], "CON") == 0) {
+            mov[i] = realloc(mov[i], 6*sizeof(char));
+            int dice = rand()%6;
+            sprintf(mov[i], "%s,%i", "CON", dice);
+        }
+
+        send_move(mov[i]);
         receive_result();
 
         printf("PRESS ENTER TO CONTINUE\n");
-        gets(buf);
+        //gets(buf);
     }
 }
 
@@ -205,7 +222,6 @@ void send_move(char * str) {
     //tv.tv_usec = 0;
 
     int retval = select(player.fd+1, NULL, &active_fds, NULL, NULL);
-    fprintf(stderr, "RETURN VALUE:\t%d\n", retval);
     if(retval < 0) {
         fprintf(stderr, "select: error with file descriptor");
         close(player.fd);

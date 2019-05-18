@@ -22,7 +22,7 @@ int start_game(void) {
     //CYCLE THROUGH EACH PLAYER
     while(true) {
         printf("ENTER STRING TO CONTINUE.\n");
-        gets(buf);
+        //gets(buf);
         if(play_game_round() == 0) break; //player victory game over
     }
     return 0;
@@ -36,9 +36,10 @@ int play_game_round( void ) {
     PLAYER * p;
 
     memcpy( &rfds, &active_fds, sizeof(active_fds));
-    tv.tv_sec = 10;
+    tv.tv_sec = 1;
     tv.tv_usec = 0;
 
+    sleep(10);
     conn_err = select(FD_SETSIZE, &rfds, NULL, NULL, &tv); //5 seconds to make move
     if(conn_err < 0) {
         perror("SELECT\n");
@@ -280,6 +281,7 @@ int parse_move(PLAYER * p, char * move) {
                     p->move = calloc(MSG_SIZE, sizeof(char));
                     sprintf(p->move, "%s", "CON");
                     tok = strtok(NULL, delim);
+                    n++; //go to next packet element
                     continue;
                 }
                 else {

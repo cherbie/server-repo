@@ -3,4 +3,4 @@
 socket=900
 #EXECUTION
 clear
-./game $socket
+./game $socket 4
