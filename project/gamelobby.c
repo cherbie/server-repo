@@ -39,7 +39,7 @@ int play_game_round( void ) {
     tv.tv_sec = 1;
     tv.tv_usec = 0;
 
-    sleep(10);
+    sleep(WAIT_TIME_MOVE);
     conn_err = select(FD_SETSIZE, &rfds, NULL, NULL, &tv); //5 seconds to make move
     if(conn_err < 0) {
         perror("SELECT\n");
@@ -89,6 +89,12 @@ int play_game_round( void ) {
     active_players = size(&queue);
     for(int i = 0; i < active_players; i++) {
         p = dequeue_front(&queue);
+        printf("%d - %d | ", p->id, p->lives);
+        enqueue(&queue, p);
+    }
+    printf("\n");
+    for(int i = 0; i < active_players; i++) {
+        p = dequeue_front(&queue);
         if(!p->alive || p == NULL) continue; //cautionary measure
         if(!move_is_correct(p)) { //handle comparison & lives //sending message
             //NOT CORRECT
@@ -110,13 +116,20 @@ int play_game_round( void ) {
         }
     }
 
+    active_players = size(&dead_queue);
+    for(int i = 0; i < active_players; i++) {
+        p = dequeue_front(&dead_queue);
+        printf("%d - %d | ", p->id, p->lives);
+        enqueue(&dead_queue, p);
+    }
+    printf("\n");
     //SEND STATUS
     if(size(&queue) <= 0 && size(&dead_queue) > 0) { //no more players in game
         //SEND VICTORY to all people in dead_queue;
         active_players = size(&dead_queue);
         for(int i = 0; i < active_players; i++) {
             p = dequeue_front(&dead_queue);
-            send_vict(p);
+            if(send_vict(p) < 0) perror(NULL);
             close(p->fd);
             continue;
         }
@@ -125,7 +138,10 @@ int play_game_round( void ) {
     else if(size(&queue) == 1) { //one winner.
         //SEND VICTORY to person in queue
         p = dequeue_front(&queue);
-        send_vict(p); //handle failure to send?
+        if(send_vict(p) < 0) { //handle failure to send?
+            perror(NULL);
+            p->alive = false;
+        }
         close(p->fd);
 
         //SEND ELIMINATION TO ALL PEOPLE IN dead_queue;
@@ -133,7 +149,7 @@ int play_game_round( void ) {
         if(active_players < 0) return 0;
         for(int i = 0; i < active_players; i++) {
             p = dequeue_front(&dead_queue);
-            send_elim(p); //handle failure to send?
+            if(send_elim(p) < 0) perror(NULL); //handle failure to send?
             FD_CLR(p->fd, &active_fds);
             close(p->fd);
         }
@@ -145,7 +161,7 @@ int play_game_round( void ) {
         if(active_players > 0) {
             for(int i = 0; i < active_players; i++) { //SEND ELIM message & close file descriptor
                 p = dequeue_front(&dead_queue);
-                send_elim(p);
+                if(send_elim(p) < 0) perror(NULL);
                 FD_CLR(p->fd, &active_fds);
                 close(p->fd);
             }
@@ -157,12 +173,22 @@ int play_game_round( void ) {
             for(int i = 0; i < active_players; i++) {
                 p = dequeue_front(&queue);
                 if(p->correct) { //CORRECT MOVE
-                    send_pass(p);
+                    if(send_pass(p) < 0) {
+                        perror(NULL);
+                        p->alive = false;
+                        close(p->fd);
+                        continue;
+                    }
                     enqueue(&queue, p);
                     continue;
                 }
                 else {
-                    send_fail(p);
+                    if(send_fail(p) < 0) {
+                        perror(NULL);
+                        p->alive = false;
+                        close(p->fd);
+                        continue;
+                    }
                     enqueue(&queue, p);
                     continue;
                 }
@@ -234,9 +260,9 @@ int send_outcome(PLAYER * p) {
  * BREAK CLIENTS PACKET INTO READABLE SEGMENTS
  * @return 0 to indicate successful interpretation, -1 to indicate error.
  */
-int parse_move(PLAYER * p, char * move) {
+int parse_move(PLAYER * p, char * cp) {
     char delim[2] = ",";
-    char * tok = strtok(move, delim);
+    char * tok = strtok(cp, delim);
     int n = 0; //handle switch ordering
     while(tok != NULL) {
         switch(n) {
@@ -291,6 +317,7 @@ int parse_move(PLAYER * p, char * move) {
             }
             case 3 : { //%d
                 p->roll = atoi(tok);
+                printf("p->roll = %d\n", p->roll);
                 return 0;
             }
             default : p->move = NULL;
@@ -328,8 +355,8 @@ bool move_is_correct(PLAYER * p) {
             p->lives -= 1;
             return false;
         }
-        else if(strcmp(p->move, "CON") && p->roll >= 1 && p->roll <= 6) { //"CON,%d" player move
-            if(p->roll == dice1|| p->roll == dice2) { //player passed
+        else if(strcmp(p->move, "CON") == 0 && p->roll >= 1 && p->roll <= 6) { //"CON,%d" player move
+            if(p->roll == dice1 || p->roll == dice2) { //player passed
                 return true; // do not change lives
             }
             else p->lives -= 1;
@@ -342,6 +369,7 @@ bool move_is_correct(PLAYER * p) {
             return true;
         }
         else if(strcmp(p->move, "DOUB") == 0 && dice1 == dice2) { //player passed
+            printf("doub entered for: %d\n", p->id);
             return true;
         }
         p->lives -= 1; //player failed
@@ -357,7 +385,7 @@ bool move_is_correct(PLAYER * p) {
 int send_pass(PLAYER * p) {
     FD_ZERO(&wfds);
     FD_SET(p->fd, &wfds);
-    tv.tv_sec = 5;
+    tv.tv_sec = WAIT_TIME_SEND;
     tv.tv_usec = 0;
 
     if(select(p->fd+1, NULL, &wfds, NULL, &tv) <= 0) {//BLOCKING
@@ -368,7 +396,7 @@ int send_pass(PLAYER * p) {
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s", p->id, "PASS");
     err = send(p->fd, buf, strlen(buf), 0);
-    printf("%s\n", buf);
+    printf("%s, %d\n", buf, p->lives);
     if(err < 0)
         return -1;
     else 
@@ -383,7 +411,7 @@ int send_fail(PLAYER * p) {
     FD_ZERO(&wfds);
     FD_SET(p->fd, &wfds);
 
-    tv.tv_sec = 5;
+    tv.tv_sec = WAIT_TIME_SEND;
     tv.tv_usec = 0;
 
     if(select(p->fd+1, NULL, &wfds, NULL, &tv) < 0) //BLOCKING
@@ -392,7 +420,7 @@ int send_fail(PLAYER * p) {
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s", p->id, "FAIL");
     err = send(p->fd, buf, strlen(buf), 0);
-    printf("%s\n", buf);
+    printf("%s, %d\n", buf, p->lives);
     if(err < 0)
         return -1;
     else 
@@ -407,7 +435,7 @@ int send_vict(PLAYER * p) {
     FD_ZERO(&wfds);
     FD_SET(p->fd, &wfds);
 
-    tv.tv_sec = 5;
+    tv.tv_sec = WAIT_TIME_SEND;
     tv.tv_usec = 0;
 
     if(select(p->fd+1, NULL, &wfds, NULL, &tv) <= 0) //BLOCKING
@@ -416,7 +444,7 @@ int send_vict(PLAYER * p) {
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s", p->id, "VICT");
     err = send(p->fd, buf, strlen(buf), 0);
-    printf("%s\n", buf);
+    printf("%s, %d\n", buf, p->lives);
     if(err < 0)
         return -1;
     else 
@@ -431,7 +459,7 @@ int send_elim(PLAYER * p) {
     FD_ZERO(&wfds);
     FD_SET(p->fd, &wfds);
 
-    tv.tv_sec = 5;
+    tv.tv_sec = WAIT_TIME_SEND;
     tv.tv_usec = 0;
 
     if(select(p->fd+1, NULL, &wfds, NULL, &tv) <= 0) //BLOCKING
@@ -440,7 +468,7 @@ int send_elim(PLAYER * p) {
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s", p->id, "ELIM");
     err = send(p->fd, buf, strlen(buf), 0);
-    printf("%s\n", buf);
+    printf("%s, %d\n", buf, p->lives);
     if(err < 0)
         return -1;
     else 

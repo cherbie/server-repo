@@ -30,7 +30,7 @@ PROJECT STATUS:
 
 CURRENTLY:
  ---
-    - Need to advance client side game play (improve logging to terminal).
+    - Need to advance client side game play (improve logging to terminal). --done
     - Need to send cancel to players if game cannot be established -- done
     - need to implement timer interrupts (pthread) -- done -> using select and sleep
     - need to decide whether to close all connections after a victor has been announced -- done : yes all connections closed

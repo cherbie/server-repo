@@ -39,6 +39,7 @@ int main(int argc, char* argv[])
         printf("----------------------------------------------\n");
         printf("TYPE YOUR MOVE (ODD, EVEN, DOUB, CON, int):\n");
         //gets(cp);
+
         sleep(2);
         int i = rand()%4;
 
@@ -47,8 +48,9 @@ int main(int argc, char* argv[])
             int dice = rand()%6;
             sprintf(mov[i], "%s,%i", "CON", dice);
         }
+        
 
-        send_move(mov[i]);
+        send_move(mov[i]); //or mov[i]
         receive_result();
 
         printf("PRESS ENTER TO CONTINUE\n");

@@ -40,7 +40,7 @@ int main(int argc, char * argv[]) {
             exit(EXIT_FAILURE);
         }
 
-        for(int i = 0; i < num_players; i++) {
+        for(int i = 0; i <= num_players; i++) {
             pid = fork();
             if(pid == 0) { //child
                 pid = getpid();

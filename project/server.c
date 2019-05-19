@@ -23,7 +23,7 @@ int main(int argc, char * argv[]) {
     }
 
     port = atoi(argv[1]);
-    if( atoi(argv[2]) != NUM_PLAYERS ) {
+    if( atoi(argv[2]) < NUM_PLAYERS ) {
         fprintf(stderr, "INCORRECT NUMBER OF PLAYERS SPECIFIED. NEED %d\n", NUM_PLAYERS);
         return EXIT_FAILURE;
     }

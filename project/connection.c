@@ -14,7 +14,7 @@
 int listenForInit(int x) {
 
     //TEN SECONDS TO CONNECT TO GAME
-    sleep(10);
+    sleep(WAIT_TIME_CONN);
 
     tv.tv_sec = 1;
     tv.tv_usec = 0;
@@ -68,7 +68,7 @@ int listenForInit(int x) {
  * @return: -1 to indicate connection error
  */
 int receive_init(QUEUE * q, PLAYER * p, int count) {
-    tv.tv_sec = 30;
+    tv.tv_sec = WAIT_TIME_INIT;
     tv.tv_usec = 0;
 
     FD_ZERO(&rfds);
@@ -78,13 +78,13 @@ int receive_init(QUEUE * q, PLAYER * p, int count) {
     if( retval < 0 ) {
         perror("select() error.\n");
         gets(buf);
-        //close(fd)
+        close(p->fd);
         return -1;
     }
     else if(retval == 0) {
         fprintf(stderr, "CLIENT: NOT ATTEMPTING TO CONNECT.\n");
         gets(buf);
-        //close(fd)
+        close(p->fd);
         return -1;
     }
     else {
