@@ -74,7 +74,6 @@ int main(int argc, char * argv[]) {
         wait(&status);
         if(WIFEXITED(status)) {
             printf("EXITED\n");
-            sleep(10);
             exit(EXIT_SUCCESS);
         }
         exit(EXIT_FAILURE);

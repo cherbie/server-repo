@@ -10,11 +10,12 @@
 #include <fcntl.h>
 #include <sys/select.h>
 #include <sys/wait.h>
+#include <sys/errno.h>
 
 //#define BUFFER_SIZE 1024
 #define MSG_SIZE 14 //bytes
 #define NUM_LIVES 5 
-#define NUM_PLAYERS 20 //adjust number of players
+#define NUM_PLAYERS 4 //adjust number of players
 #define NUM_SERVERS 1 //allow for scaling
 #define WAIT_TIME_MOVE 3
 #define WAIT_TIME_INIT 10
