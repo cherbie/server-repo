@@ -17,16 +17,16 @@ PROJECT STATUS:
 10. receive players move -- done
 11. process players move -- done
 12. roll dice -- done
-12. evaluate players move
+12. evaluate players move  -- DONE
 12. send "PASS" -- done
 13. send "FAIL" -- done
-14. handle players number of lives and existence within game lobby -- further testing required
-15. handle players unexpectedly leaving game -- further testing required
-16. handle players timeout issue for submitting move. --testing required
+14. handle players number of lives and existence within game lobby -- further testing required -- done
+15. handle players unexpectedly leaving game -- further testing required -- DONE
+16. handle players timeout issue for submitting move. --testing required --DONE
 15. send "VICT" -- done
 16. send "ELIM" -- done
-17. Keep server open after a round has been played?
-17. Create test environment and test many cases.
+17. Keep server open after a round has been played. Close after a game is terminated -- DONE
+17. Create test environment and test many cases. -- DONE
 
 CURRENTLY:
  ---
