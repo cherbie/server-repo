@@ -13,7 +13,7 @@
  */
 int listenForInit(int x) {
 
-    //TEN SECONDS TO CONNECT TO GAME
+    //WAIT CERTAIN AMOUNT OF TIME TO CONNECT TO GAME
     sleep(WAIT_TIME_CONN);
 
     tv.tv_sec = 1;

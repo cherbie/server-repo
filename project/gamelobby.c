@@ -44,7 +44,7 @@ int play_game_round( void ) {
     sleep(WAIT_TIME_MOVE);
     conn_err = select(FD_SETSIZE, &rfds, NULL, NULL, &tv); //5 seconds to make move
     if(conn_err == EBADF) { //one or more clients have 
-        perror(NULL);
+        perror("There was a bad file descriptor.\n");
     }
     else if(conn_err < 0) {
         perror("receive move select error.\n");
@@ -69,17 +69,11 @@ int play_game_round( void ) {
         }
         else { //CONNECTION FD ready for reading
             err = receive_move(p);
-            if(err == -3) { //CLIENT HAS LEFT THE GAME
+            if(err < 0) { //CLIENT HAS LEFT THE GAME
                 printf("CLIENT: %d has left the game.\n", p->id);
                 p->alive = false;
                 close(p->fd);
                 FD_CLR(p->fd, &active_fds);
-                continue;
-            }
-            else if(err < 0) { //error receiving move (timeout or otherwise)
-                printf("FAILED TO RECEIVE MOVE: %d\n", p->id);
-                p->move = NULL; //player->move is equal to?
-                enqueue(&queue, p);
                 continue;
             }
             else { // SUCCESS
@@ -182,6 +176,7 @@ int play_game_round( void ) {
         if(active_players > 0) {
             for(int i = 0; i < active_players; i++) {
                 p = dequeue_front(&queue);
+                if(p == NULL) continue;
                 if(p->correct) { //CORRECT MOVE
                     if(send_pass(p) < 0) { //error sending. assume socket has been closed
                         perror("send pass error.\n");
@@ -190,7 +185,7 @@ int play_game_round( void ) {
                         close(p->fd);
                         continue;
                     }
-                    enqueue(&queue, p);
+                    else enqueue(&queue, p);
                     continue;
                 }
                 else {
@@ -201,7 +196,7 @@ int play_game_round( void ) {
                         close(p->fd);
                         continue;
                     }
-                    enqueue(&queue, p);
+                    else enqueue(&queue, p);
                     continue;
                 }
             }
@@ -229,7 +224,6 @@ void set_player_lives(void) {
  * player to send move. EVEN || ODD || DOUB || CON,%d
  * On player timeout, set player.alive status to FALSE
  * @return 0 to indicate success, -1 to indicate error
- * @return -3 to indicate client has left the game
  */
 int receive_move(PLAYER * p) {
     struct fd_set fds;
@@ -244,15 +238,17 @@ int receive_move(PLAYER * p) {
         return -3;
     }
     else if(sel_err < 0) {
+        fprintf(stderr, "receive_move: sel_err = %d\n", sel_err);
         return -1;
     }
 
     char * cp = calloc(MSG_SIZE, sizeof(char));
     int suc = recv(p->fd, cp, MSG_SIZE, 0);
-    if( suc < 0 ) //FAIL
+    if( suc <= 0 ) { //FAIL
+        fprintf(stderr, "receive_move: suc = %d\terrno = %d\n", suc, errno);
+        perror(NULL);
         return -1;
-    else if( suc == 0) //proper client server exit
-        return -3;
+    }
     
     //RECIEVE MOVE
     if(parse_move(p, cp) < 0 ) { //FAIL
@@ -411,10 +407,14 @@ int send_pass(PLAYER * p) {
     sprintf(buf, "%d,%s", p->id, "PASS");
     err = send(p->fd, buf, strlen(buf), 0);
     printf("%s, %d\n", buf, p->lives);
-    if(err < 0)
+    if(err < 0) {
+        fprintf(stderr, "send_pass: return -1\n");
         return -1;
-    else 
+    }
+    else {
+        fprintf(stderr, "send_pass: return 0\n");
         return 0;
+    }
 }
 
 /**
@@ -428,17 +428,23 @@ int send_fail(PLAYER * p) {
     tv.tv_sec = WAIT_TIME_SEND;
     tv.tv_usec = 0;
 
-    if(select(p->fd+1, NULL, &wfds, NULL, &tv) < 0) //BLOCKING
+    if(select(p->fd+1, NULL, &wfds, NULL, &tv) < 0) { //BLOCKING
+        fprintf(stderr, "send_fail: select returned < 0\n");
         return -1;
+    }
     
     buf = calloc(MSG_SIZE, sizeof(char));
     sprintf(buf, "%d,%s", p->id, "FAIL");
     err = send(p->fd, buf, strlen(buf), 0);
     printf("%s, %d\n", buf, p->lives);
-    if(err < 0)
+    if(err < 0) {
+        fprintf(stderr, "send_fail: return -1\n");
         return -1;
-    else 
+    }
+    else {
+        fprintf(stderr, "send_fail: return 0\n"); 
         return 0;
+    }
 }
 
 /**

@@ -45,12 +45,20 @@ int main(int argc, char * argv[]) {
         gets(buf);
         exit(EXIT_FAILURE);
     }
-    
-    switch(fork()) {
+    int pid = fork();
+    switch(pid) {
         case 0 : { //child
             srand(time(NULL));
-            if( start_game() == 0 ) exit(EXIT_SUCCESS);
-            else exit(EXIT_FAILURE);
+            if( start_game() == 0 ) {
+                close(server.fd);
+                fprintf(stderr, "EXITED WITH EXIT_SUCCESS.\n");
+                exit(EXIT_SUCCESS);
+            }
+            else {
+                close(server.fd);
+                fprintf(stderr, "EXITED WITH EXIT_FAILURE.\n");
+                exit(EXIT_FAILURE);
+            }
         }
         case -1 : { //error forking
             perror("UNEXPECTED APPLICATION ERROR: FORKING_ERROR.\n");
@@ -62,16 +70,18 @@ int main(int argc, char * argv[]) {
                 while(true)
                     reject_connections();
             }
-            else if( p == -1) {
+            else if(p == -1) {
                 perror(NULL);
                 return EXIT_FAILURE;
             }
             else { //parent
                 int wstatus;
-                wait(&wstatus);
+                waitpid(pid, &wstatus, 0);
                 close(server.fd);
                 if(WIFEXITED(wstatus)) //TRUE -- has exited
+                    fprintf(stderr, "RETURNED NORMALLY\n");
                     //exit(WEXITSTATUS(wstatus));
+                fprintf(stderr, "DID NOT WAIT. EXIT STATUS IS %d\n", WEXITSTATUS(wstatus));
                 gets(buf);
             }
         }
