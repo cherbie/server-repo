@@ -34,17 +34,22 @@ CURRENTLY:
     - Need to send cancel to players if game cannot be established -- done
     - need to implement timer interrupts (pthread) -- done -> using select and sleep
     - need to decide whether to close all connections after a victor has been announced -- done : yes all connections closed
-    - need to track client connection status throughout the programming by checking all recv calls -- further testing required
+    - need to track client connection status throughout the programming by checking all recv calls -- DONE further testing required
     - Need to implement select() to find if a connection attempt is attempting to be made -- done
-    - kill when send() function fails? ?????????
+    - kill when send() function fails? ????????? DONE
          - can either kill connection
          - or attempt to resend after a delay. 
          - ** NOT SPECIFIED HENCE YOU CAN SELECT YOUR PATH AND DESCRIBE YOUR CHOICE THROUGH COMMENTS
-    - If recv == 0 close client file descriptor -- further testing required
+    - If recv == 0 close client file descriptor -- further testing required DONE
     - implement sleep(10) to wait for all clients to send their message ... and then quickly cycle through all players -- done(needs to be 30 seconds though)
-    - how to exit parent of child (fork) with the status of the child
-    - do not need to send pass or fail when VICT or ELIM is sent
+    - how to exit parent of child (fork) with the status of the child -- done
+    - do not need to send pass or fail when VICT or ELIM is sent --done
     - remove all server print statements
     - remove all gets() breaks
+    - fix all method descriptions
+    - improve all code commmenting
+    - improve function return value consistancy
+    - write README file to describe who to use server and test server
+    - remove number of player check and 3rd commmand line argument requirement
     
-    still exists a bug with DOUB move
+    still exists a bug with DOUB move -- BUG FIXED 21 MAY 2019
