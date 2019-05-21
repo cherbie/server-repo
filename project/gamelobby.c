@@ -22,7 +22,7 @@ int start_game(void) {
     //CYCLE THROUGH EACH PLAYER
     while(true) {
         printf("ENTER STRING TO CONTINUE.\n");
-        gets(buf);
+        //gets(buf);
         int game_err = play_game_round();
         if(game_err == 0) break; //player victory game over
         else if(game_err == -2) return -1;
@@ -69,8 +69,8 @@ int play_game_round( void ) {
         }
         else { //CONNECTION FD ready for reading
             err = receive_move(p);
-            if(err < 0) { //CLIENT HAS LEFT THE GAME
-                printf("CLIENT: %d has left the game.\n", p->id);
+            if(err < 0) { //CLIENT HAS LEFT THE GAME. ERRNO 54 is set if client has left
+                fprintf(stderr, "CLIENT: %d has left the game.\n", p->id);
                 p->alive = false;
                 close(p->fd);
                 FD_CLR(p->fd, &active_fds);

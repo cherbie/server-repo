@@ -80,9 +80,9 @@ int main(int argc, char * argv[]) {
                 close(server.fd);
                 if(WIFEXITED(wstatus)) //TRUE -- has exited
                     fprintf(stderr, "RETURNED NORMALLY\n");
-                    //exit(WEXITSTATUS(wstatus));
-                fprintf(stderr, "DID NOT WAIT. EXIT STATUS IS %d\n", WEXITSTATUS(wstatus));
+                kill(p, SIGTERM);
                 gets(buf);
+                exit(WEXITSTATUS(wstatus));
             }
         }
     }
