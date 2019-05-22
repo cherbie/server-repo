@@ -26,7 +26,7 @@ int main(int argc, char * argv[]) {
         pid = fork();
         if(pid == 0) {
             char * prog = calloc(50, sizeof(char));
-            sprintf(prog, "xterm -e %s %d %d", SERVER, port, num_players);
+            sprintf(prog, "xterm -e %s %d", SERVER, port);
 
             if(system(prog) < 0) {
                 fprintf(stderr, "SERVER SHUTDOWN WITH ERROR\n");
