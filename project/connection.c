@@ -16,20 +16,12 @@
 int receive_connections(void) {
     //SLEEP SERVER TO ALLOW CLIENTS/PLAYERS TO CONNECT TO THE GAME
     sleep(WAIT_TIME_CONN);
-
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
-    
-    FD_ZERO(&rfds);
-    FD_SET(server.fd, &rfds); 
-
-    //CHECK IF THERE ARE ANY CONNECTION REQUESTS IN SERVER SOCKET BUFFER
-    int retval = select(server.fd+1, &rfds, NULL, NULL, &tv);
-    if( retval < 0 ) {
-        fprintf(stderr,"ERRNO=%d: \n\tSELECT SYS-CALL ERROR: UNABLE TO ESTABLISH TCP CONNECTION WITH CLIENTS.\n", errno);
-        gets(buf);
+    players = malloc(NUM_PLAYERS * sizeof(PLAYER)); //ALLOCATE MEMORY FOR ALL POSSIBLE PLAYERS
+    if(players == NULL) {
+        fprintf(stderr, "UNABLE TO ALLOCATE MEMORY FOR PLAYERS\n");
         return -1;
     }
+<<<<<<< HEAD
     else if(retval == 0) {
         fprintf(stderr, "SELECT SYS-CALL: NO CLIENTS ATTEMPTING TO CONNECT.\n");
         gets(buf);
@@ -75,18 +67,38 @@ int receive_connections(void) {
         players = malloc(NUM_PLAYERS * sizeof(PLAYER)); //ALLOCATE MEMORY FOR ALL POSSIBLE PLAYERS
         if(players == NULL) {
             fprintf(stderr, "UNABLE TO ALLOCATE MEMORY FOR PLAYERS\n");
+=======
+
+    int i = 0;
+
+    while(true) {
+        tv.tv_sec = 0;
+        tv.tv_usec = 20;
+        
+        FD_ZERO(&rfds);
+        FD_SET(server.fd, &rfds); 
+
+        //CHECK IF THERE ARE ANY CONNECTION REQUESTS IN SERVER SOCKET BUFFER
+        int retval = select(server.fd+1, &rfds, NULL, NULL, &tv);
+        if( retval < 0 ) {
+            fprintf(stderr,"ERRNO=%d: \n\tSELECT SYS-CALL ERROR: UNABLE TO ESTABLISH TCP CONNECTION WITH CLIENTS.\n", errno);
             return -1;
         }
-        int tempfd = 0;
-        int i = 0;
-        while(true) {
+        else if(retval == 0) {
+            fprintf(stderr, "SELECT SYS-CALL: NO CLIENTS ATTEMPTING TO CONNECT.\n");
+>>>>>>> dev
+            return -1;
+        }
+        else {
+            int tempfd = 0;
             socklen_t addr_len = sizeof(players[i].addr);
             tempfd = accept(server.fd, (struct sockaddr *) &players[i].addr, &addr_len);
-            if(tempfd < 0) { //ERROR -- UNABLE TO ACCEPT CONNECTION REQUESTS
-                perror("ACCEPT() SYS-CALL ERROR: UNABLE TO ACCEPT CONNECTION REQUESTS.\n");
-                free(players);
-                gets(buf);
+            if(tempfd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
                 return -1;
+            }
+            else if(tempfd <= 0) { //ERROR -- UNABLE TO ACCEPT CONNECTION REQUESTS
+                fprintf(stderr, "ERRNO=%d:\n\tACCEPT() SYS-CALL ERROR: UNABLE TO ACCEPT CONNECTION REQUESTS.\n", errno);
+                continue;
             }
             players[i].fd = tempfd; //ALLOCATE CONNECTED CLIENT TO PLAYER MEMORY
 
@@ -95,13 +107,13 @@ int receive_connections(void) {
             rec_err = receive_init(&queue, &players[i], i+1);
             if(rec_err < 0) {
                 fprintf(stderr, "DID NOT RECEIVE INIT PACKET FROM CLIENT.\n");
+                close(players[i].fd);
                 continue; //client
             }
 
             i++;
         }
     }
-    gets(buf); 
     return -1;
 }
 */
@@ -211,8 +223,13 @@ int receive_init(QUEUE * q, PLAYER * p, int count) {
             return -1;
         }
         //"INIT" received
+<<<<<<< HEAD
         /**if(send_welcome(p) < 0) {
+=======
+        if(send_welcome(p) <= 0) {
+>>>>>>> dev
             fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", p->id);
+            send_msg(p, "REJECT");
             close(p->fd); //terminate connection
             return -1;
         }*/
@@ -258,7 +275,11 @@ int send_msg(PLAYER* p, const char* s) {
         return -1;
     }
     else {
+<<<<<<< HEAD
         if(!FD_ISSET(p->fd, &rfds)) return -1;
+=======
+        if(FD_ISSET(p->fd, &rfds) == 0) return -1;
+>>>>>>> dev
         buf = calloc(MSG_SIZE, sizeof(char));
         if(sprintf(buf, "%s", s) <= 0) return -1; //SET SENDING BUFFER
         return send(p->fd, buf, strlen(buf), 0);
@@ -340,13 +361,20 @@ void reject_connections(void) {
  * @return 0 to indicate success, -1 to indicate fialure.
  */
 int send_start(void) {
-    for(int i = 0; i < server.num_players; i++) {
+    int len = size(&queue);
+    PLAYER * p;
+
+    for(int i = 0; i < len; i++) {
+        p = dequeue_front(&queue);
+        if( p == NULL ) continue;
         buf = calloc(MSG_SIZE, sizeof(char));
-        if(sprintf(buf, "%s,%d,%d", "START", server.num_players, players[i].lives) <= 0) return -1;
-        if(send_msg(&players[i], buf) <= 0) {
+        if(sprintf(buf, "%s,%d,%d", "START", server.num_players, p->lives) <= 0) return -1;
+        if(send_msg(p, buf) <= 0) {
             perror("ERROR SENDING START\n");
+            enqueue(&queue, p);
             return -1;
         }
+        enqueue(&queue, p);
     }
     return 0;
 }
@@ -356,13 +384,15 @@ int send_start(void) {
  * @return 0 to indicate success, -1 to indicate fialure.
  */
 int send_cancel(void) {
-    for(int i = 0; i < server.num_players; i++) {
+    int len = size(&queue);
+    PLAYER * p;
+    for(int i = 0; i < len; i++) {
+        p = dequeue_front(&queue);
+        if( p == NULL) return 0;
         buf = calloc(MSG_SIZE, sizeof(char));
         if(sprintf(buf, "%s", "CANCEL") <= 0) return -1;
-        if(send_msg(&players[i], buf) < 0) {
-            perror("ERROR SENDING CANCEL\n");
-            return -1;
-        }
+        send_msg(p, buf); //DO NOT KEEP TRACK OF FAILUREf ... because of cancel
+        close(p->fd);
     }
     return 0;
 }
