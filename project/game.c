@@ -179,12 +179,23 @@ int init_match(void) {
         return -1;
     }
 
+    buf = calloc(MSG_SIZE, sizeof(char));
+    if( recv(player.fd, buf, MSG_SIZE, 0) <= 0) {
+        fprintf(stderr, "Error receiving reply to %s message sent.\n", "INIT");
+    }
+
+    //REJECT received
+    if( strcmp(buf, "CANCEL") == 0) { 
+        fprintf(stderr, "Game entry rejected.\n");
+        return -1;
+    }
+
     //RECEIVE START
 
-    buf = calloc(MSG_SIZE, sizeof(char));
-    err = recv(player.fd, buf, MSG_SIZE, 0);
-    if( err < 0) 
-        fprintf(stderr, "Error receiving %s message sent.\n", "START");
+    //buf = calloc(MSG_SIZE, sizeof(char));
+    //err = recv(player.fd, buf, MSG_SIZE, 0);
+   // if( err < 0) 
+        //fprintf(stderr, "Error receiving %s message sent.\n", "START");
     printf("RECEIVED: %s\n", buf);
     return extract_start(buf); //tokenise "START" message
 }

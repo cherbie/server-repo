@@ -7,6 +7,10 @@ COMPILING INSTRUCTIONS:
     2. Run: "make server" to build the program. 
     3. Further details are outlined at the top of the makefile.
 
+TO RUN THE SERVER:
+    - In the working directory input "./server" and usage instructions will be explained
+    - USAGE => "./server [port]"
+
 GAME SETTINGS:
     - Navigate to the "./server.h" header file in order to change game characteristics such as:
         + Number of players

@@ -29,13 +29,13 @@ int main(int argc, char * argv[]) {
     }
     
     err = listenForInit(); //MANAGES THE INITIALISATION OF PLAYERS IN THE GAME
-    if(err < 0) {
+    if(err < 0 || size(&queue) < NUM_PLAYERS) {
         fprintf(stderr, "Game connection establishment timeout. Failed to establish connection.\n");
         send_cancel(); //SEND CANCEL TO ALL WELCOMED GAME PLAYERS
-        gets(buf);
         exit(EXIT_FAILURE);
     }
 
+    
     int pid = fork();
     switch(pid) {
         case 0 : { //child
@@ -53,6 +53,7 @@ int main(int argc, char * argv[]) {
         }
         case -1 : { //error forking
             perror("UNEXPECTED APPLICATION ERROR: FORKING_ERROR.\n");
+            exit(EXIT_FAILURE);
         }
         default : { //PARENT
             int p = fork();
@@ -67,7 +68,6 @@ int main(int argc, char * argv[]) {
             else { //parent
                 int wstatus;
                 waitpid(pid, &wstatus, 0); //WAIT FOR GAMEPLAY CHILD TO FINISH EXECUTING
-                gets(buf);
                 close(server.fd);
                 if(WIFEXITED(wstatus)) //TRUE -- has exited
                     fprintf(stderr, "GAME PLAY CHILD RETURNED NORMALLY WITH EXIT STATUS %d\n", WEXITSTATUS(wstatus));

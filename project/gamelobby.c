@@ -11,9 +11,12 @@
  * @return 0 to indicate successful execution. -1 to indicate failure.
  */
 int start_game(void) {
-    if(server.num_players == NUM_PLAYERS) { //ENOUGH PLAYERS IN THE GAME
+    if(size(&queue) == NUM_PLAYERS) { //ENOUGH PLAYERS IN THE GAME
         set_player_lives(); //set players initial lives
-        send_start(); //send "START, %d, %d" packet
+        if(send_start() < 0) { //send "START, %d, %d" packet
+            send_cancel();
+            return -1;
+        }
         construct_queue(&dead_queue);
     }
     else {
