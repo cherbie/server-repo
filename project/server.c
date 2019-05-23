@@ -32,6 +32,7 @@ int main(int argc, char * argv[]) {
     if(err < 0) {
         fprintf(stderr, "Game connection establishment timeout. Failed to establish connection.\n");
         send_cancel(); //SEND CANCEL TO ALL WELCOMED GAME PLAYERS
+        gets(buf);
         exit(EXIT_FAILURE);
     }
 
@@ -66,6 +67,7 @@ int main(int argc, char * argv[]) {
             else { //parent
                 int wstatus;
                 waitpid(pid, &wstatus, 0); //WAIT FOR GAMEPLAY CHILD TO FINISH EXECUTING
+                gets(buf);
                 close(server.fd);
                 if(WIFEXITED(wstatus)) //TRUE -- has exited
                     fprintf(stderr, "GAME PLAY CHILD RETURNED NORMALLY WITH EXIT STATUS %d\n", WEXITSTATUS(wstatus));

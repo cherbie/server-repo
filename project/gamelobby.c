@@ -39,19 +39,21 @@ int play_game_round( void ) {
     PLAYER * p;
 
     FD_ZERO(&rfds);
-    memcpy(&rfds, &active_fds, sizeof(active_fds));
+    FD_COPY(&active_fds, &rfds);
     tv.tv_sec = 1;
     tv.tv_usec = 0;
 
     sleep(WAIT_TIME_MOVE); //PLAYERS MOVES ACCUMULATE IN CONNECTION BUFFER
 
     conn_err = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
-    if(conn_err == EBADF) { //ONE OR MORE CLIENTS HAVE LEFT THE GAME
-        perror("There was a bad file descriptor.\n");
-    }
-    else if(conn_err < 0) {
-        perror("receive move select error.\n");
-        return -2;
+    if(conn_err < 0) { //ERROR
+        if(errno == EBADF) {
+            fprintf(stderr, "ERRNO = %d:\n\tThere was a bad file descriptor.\n", errno);
+        }
+        else {
+            fprintf(stderr, "ERRNO = %d:", errno);
+            perror("\t");
+        }
     }
     else if(conn_err == 0) { //NO GAME PLAYERS MADE A MOVE HENCE DON'T DEDUCT A LIFE.
         fprintf(stderr, "NO GAME PLAYERS MADE A MOVE\n");
@@ -69,11 +71,11 @@ int play_game_round( void ) {
         }
         else { //CONNECTION FD ready for reading
             err = receive_move(p);
-            if(err < 0) { //CLIENT HAS LEFT THE GAME. ERRNO 54 is set if client has left
+            if(err < 0) { //CLIENT HAS LEFT THE GAME. ERRNO 54 or 60 is set if client has left
                 fprintf(stderr, "CLIENT: %d has left the game.\n", p->id);
                 p->alive = false;
                 FD_CLR(p->fd, &active_fds); //CLEAR PLAYER FD FROM SET OF ACTIVE FD's
-                close(p->fd);
+                close(p->fd); //SOCKET STILL REMAINS IN TIME-WAIT STATE HOWEVER FOR 1 MINUTE AS DEFINED IN tcp.h
                 continue;
             }
             else { // SUCCESS
@@ -210,27 +212,12 @@ void set_player_lives(void) {
  * @return 0 to indicate success, -1 to indicate error, -3 to indicate EBADF error
  */
 int receive_move(PLAYER * p) {
-    struct fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(p->fd, &fds);
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
-
-    int sel_err = select(p->fd + 1, &fds, NULL, NULL, &tv);
-    if(sel_err == EBADF) {
-        perror(NULL);
-        return -3;
-    }
-    else if(sel_err <= 0) {
-        fprintf(stderr, "receive_move: sel_err = %d\n", sel_err);
-        return -1;
-    }
-
     char * cp = calloc(MSG_SIZE, sizeof(char));
     int suc = recv(p->fd, cp, MSG_SIZE, 0);
     if( suc <= 0 ) { //FAIL
-        fprintf(stderr, "receive_move: suc = %d\terrno = %d\n", suc, errno);
+        fprintf(stderr, "receive_move: returned = %d\t errno = %d\n", suc, errno);
         perror(NULL);
+        free(cp);
         return -1;
     }
     
