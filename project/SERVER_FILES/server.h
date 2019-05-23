@@ -70,6 +70,8 @@ struct timeval          tv;
 int start_game(void);
 void set_server_socket(void);
 int listenForInit(void);
+int receive_connections(void);
+void close_all_connections(int);
 int send_msg(PLAYER *, const char *);
 void reject_connections(void);
 void set_player_lives(void);

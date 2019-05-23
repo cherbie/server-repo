@@ -7,13 +7,13 @@
 #include "server.h"
 
 /**
- * ACCEPT AND RECEIVE INIT WITH GAME PLAYERS.
+ * ACCEPT INCOMING CONNECTIONS AT SERVER SOCKET UNTIL NUMBER OF PLAYERS IS FULL
  * Manages connection time outs and incorrect initialisation of connections.
  * confirm game entry will "WELCOME".
  * Deny game entry with "REJECT".
- * @return 0 on success,  return -1 on failure to initialise players connection in game play.
+ * @return number of players connected or return -1 on failure to initialise players connection in game play.
  */
-int listenForInit(void) {
+int receive_connections(void) {
     //SLEEP SERVER TO ALLOW CLIENTS/PLAYERS TO CONNECT TO THE GAME
     sleep(WAIT_TIME_CONN);
 
@@ -36,6 +36,42 @@ int listenForInit(void) {
         return -1;
     }
     else {
+        int count = 0;
+        int tempfd;
+        while(true) {
+            players = realloc(players, (count+1) * sizeof(PLAYER));
+            if(players == NULL) {
+                fprintf(stderr, "UNABLE TO ALLOCATE MEMORY FOR PLAYERS\n");
+                return -1;
+            }
+
+            socklen_t addr_len = sizeof(players[count].addr);
+            tempfd = accept(server.fd, (struct sockaddr *) &players[count].addr, &addr_len);
+            if(tempfd < 0) { //ERROR -- UNABLE TO ACCEPT CONNECTION REQUESTS
+                if(errno == EAGAIN) { //NO INCOMING CONNECTIONS
+                    fprintf(stderr, "ERRNO=%d:\n\tACCEPT() SYS-CALL ERROR: NO INCOMING CONNECTIONS.\n", errno);
+                    return count; //NO MORE CONNECTION REQUESTS
+                }
+                else if(errno == EBADF || errno == ECONNABORTED) { //ERRNO SUCH AS EBADF & ECONNABORTED
+                    fprintf(stderr, "ERRNO=%d:\n\tACCEPT() SYS-CALL ERROR: CONNECTION ABORTED\n", errno);
+                    continue; //accept until server socket is empty or number of players reached.
+                }
+                else {
+                    fprintf(stderr, "ERRNO=%d:\n\tACCEPT() SYS-CALL ERROR: UNABLE TO ACCEPT CONNECTION REQUESTS.\n", errno);
+                    return -1;
+                }
+            }
+            //ACCEPT() SUCCESS
+            players[count].fd = tempfd; //ALLOCATE CONNECTED CLIENT TO PLAYER MEMORY
+            fcntl(players[count].fd, F_SETFL, O_NONBLOCK); //SET TO NON-BLOCKING
+            server.num_players = count+1;
+            if(server.num_players == NUM_PLAYERS) return server.num_players; //ENOUGH PLAYERS CONNECTED TO SERVER
+            count++; //increment number of players
+        }
+        return count;
+    }
+}
+        /*
         players = malloc(NUM_PLAYERS * sizeof(PLAYER)); //ALLOCATE MEMORY FOR ALL POSSIBLE PLAYERS
         if(players == NULL) {
             fprintf(stderr, "UNABLE TO ALLOCATE MEMORY FOR PLAYERS\n");
@@ -62,17 +98,66 @@ int listenForInit(void) {
                 continue; //client
             }
 
-            if(server.num_players == NUM_PLAYERS) return 0; //ENOUGH PLAYERS CONNECTED TO SERVER
             i++;
         }
     }
     gets(buf); 
     return -1;
 }
+*/
+/**
+* MANAGES THE ACCEPTANCE OF INCOMING CONNECTIONS 
+* AND THE RECEIVAL OF CLIENT INIT MESSAGES
+* @return 0 to indicate game should start, -1 to indicate failure. send "CANCEL PACKETS are made."
+*/
+int listenForInit(void) {
+    int retval = receive_connections();
+    if(retval != NUM_PLAYERS) {
+        fprintf(stderr, "NOT ENOUGH GAME PLAYERS");
+        close_all_connections(retval);
+        return -1;
+    }
+
+    sleep(WAIT_TIME_INIT); //WAIT FOR CLIENTS TO SEND INIT REQUEST
+    bool success = true;
+    for(int i = 0; i < NUM_PLAYERS; i++) {
+        if(receive_init(&queue, &players[i], i+1) < 0) { //ERROR RECEIVING INIT FROM PLAYER ... NOT ENOUGH PLAYERS IN GAME
+            success = false;
+            break;
+        }
+    }
+    if(!success) { //NOT ENOUGH PLAYERS
+        send_cancel();
+        return -1;
+    }
+    else {
+        if(send_welcome() < 0) {
+            send_cancel();
+            return -1;
+        }
+        return 0;
+    }
+}
+
+/**
+* PROPERLY CLOSES ALL CONNECTED SOCKETS WITHOUT
+* "REJECT" PACKET IS SENT
+*/
+void close_all_connections(int size) {
+    PLAYER * p;
+    for(int i = 0; i < size; i++) {
+        p = &players[i];
+        if(send_msg(p, "REJECT") < 0) {
+                fprintf(stderr, "Error sending message %s to %d\n", "REJECT", p->fd);
+        }
+        close(p->fd);
+    }
+}
 
 /**
  * Initialise game player entry into game play lobby by sending "Welcome,%d" message.
  * Otherwise send the "REJECT" message packet.
+ * Close all unsuccessful INIT attempts
  * @param q QUEUE containing all active game players
  * @param p PLAYER to receive INIT from
  * @param count int used to assign player with id
@@ -126,11 +211,11 @@ int receive_init(QUEUE * q, PLAYER * p, int count) {
             return -1;
         }
         //"INIT" received
-        if(send_welcome(p) < 0) {
+        /**if(send_welcome(p) < 0) {
             fprintf(stderr, "Error sending message %s to %d\n", "WELCOME", p->id);
             close(p->fd); //terminate connection
             return -1;
-        }
+        }*/
         enqueue(q, p); //ADD PLAYER TO QUEUE OF PLAYERS IN GAME PLAY LOBBY
     }
     server.num_players = size(q); //REVISE NUMBER OF PLAYERS MANAGED BY THE SERVER
@@ -140,12 +225,21 @@ int receive_init(QUEUE * q, PLAYER * p, int count) {
  * Send welcome message to player/client.
  * @return >=0 to indicate success, -1 to indicate error
  */
-int send_welcome(PLAYER * p) {
-    char * str = calloc(MSG_SIZE, sizeof(char));
-    if(sprintf(str, "%s,%d", "WELCOME", p->id) <= 0) return -1;
-    int ret = send_msg(p, str); //OUTCOME RETURNED TO CALLING FUNCTION
-    free(str);
-    return ret;
+int send_welcome(void) {
+    int n = size(&queue);
+    PLAYER * p;
+    for(int i = 0; i < n; i++) {
+        char * str = calloc(MSG_SIZE, sizeof(char));
+        p = &players[i];
+
+        if(sprintf(str, "%s,%d", "WELCOME", p->id) <= 0) return -1;
+        int ret = send_msg(p, str); //OUTCOME RETURNED TO CALLING FUNCTION
+        if(ret < 0) {
+            fprintf(stderr, "ERRNO=%d: UNABLE TO SEND WELCOME\n", errno);
+            return -1;
+        }
+    }
+    return 0;
 }
 /**
  * @return the return value of socket send() function.
@@ -153,16 +247,20 @@ int send_welcome(PLAYER * p) {
  */
 int send_msg(PLAYER* p, const char* s) {
     FD_ZERO(&rfds);
-    FD_SET(p->fd, &rfds); 
+    FD_SET(p->fd, &rfds);
 
-    int retval = select(p->fd + 1, NULL, &rfds, NULL, NULL); //BLOCKING
-    if( retval < 0 ) {
+    tv.tv_sec = WAIT_TIME_SEND;
+    tv.tv_usec = 0;
+
+    int retval = select(p->fd + 1, NULL, &rfds, NULL, &tv); //BLOCKING
+    if( retval <= 0 ) {
         perror("select() error.\n");
         return -1;
     }
     else {
+        if(!FD_ISSET(p->fd, &rfds)) return -1;
         buf = calloc(MSG_SIZE, sizeof(char));
-        if( sprintf(buf, "%s", s) <= 0) return -1; //SET SENDING BUFFER
+        if(sprintf(buf, "%s", s) <= 0) return -1; //SET SENDING BUFFER
         return send(p->fd, buf, strlen(buf), 0);
     }
 }

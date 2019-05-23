@@ -29,12 +29,13 @@ int main(int argc, char * argv[]) {
     }
     
     err = listenForInit(); //MANAGES THE INITIALISATION OF PLAYERS IN THE GAME
-    if(err < 0) {
+    if(err < 0 || size(&queue) < NUM_PLAYERS) {
         fprintf(stderr, "Game connection establishment timeout. Failed to establish connection.\n");
         send_cancel(); //SEND CANCEL TO ALL WELCOMED GAME PLAYERS
         gets(buf);
         exit(EXIT_FAILURE);
     }
+
 
     int pid = fork();
     switch(pid) {
