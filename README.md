@@ -1,3 +1,3 @@
-# server-repo
+# __Computer Networks (UWA) Unit Project__
 
 Contributors are Clayton and Fraser.
